@@ -94,9 +94,13 @@ class Guesser:
     def rank_words(self) -> None:
         rank = [
             (
-                # -len([c for c in word if c in self.unknown_letters])
-                -len(set(word)),
-                # - len([c for c in word if c in "aeiou"])
+                # number of distinct letters in the word
+                # idea being I'll learn most from a word with more letters
+                -len(set(word))
+                # hamming distance
+                # idea being I'll learn the most from a word least similar to
+                # the last guess
+                -sum(x != y for x, y in zip(word, self.guesses[-1])),
                 word,
             )
             for word in self.words
