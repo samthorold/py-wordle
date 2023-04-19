@@ -94,7 +94,9 @@ class Guesser:
     def rank_words(self) -> None:
         rank = [
             (
-                -len([c for c in word if c in self.unknown_letters]) - len(set(word)),
+                # -len([c for c in word if c in self.unknown_letters])
+                -len(set(word)),
+                # - len([c for c in word if c in "aeiou"])
                 word,
             )
             for word in self.words
