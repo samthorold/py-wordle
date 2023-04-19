@@ -2,6 +2,8 @@ from enum import Enum
 import random
 from typing import Optional, Sequence
 
+from rich import print
+from rich.progress import track
 import structlog
 import typer
 
@@ -25,7 +27,7 @@ class LSTAT(Enum):
 class Guesser:
     def __init__(
         self,
-        word: str,
+        word: str | None = None,
         guesses: list[str] | None = None,
         statuses: list[list[LSTAT]] | None = None,
         words: list[str] | None = None,
@@ -45,15 +47,20 @@ class Guesser:
             ["".join(f"{s.value}" for s in status) for status in self.statuses]
         )
 
-    def add(self, guess: str) -> None:
-        status: list[LSTAT] = []
-        for l, r in zip(guess, self.word):
-            if l == r:
-                status.append(LSTAT.CORRECT)
-            elif l in self.word:
-                status.append(LSTAT.PRESENT)
-            else:
-                status.append(LSTAT.MISSING)
+    def add(self, guess: str, status: list[LSTAT] | None = None) -> None:
+        status = [] if status is None else status
+        if not status:
+            if not self.word:
+                raise ValueError(
+                    "Must provide either a ground truth word or a guess status"
+                )
+            for l, r in zip(guess, self.word):
+                if l == r:
+                    status.append(LSTAT.CORRECT)
+                elif l in self.word:
+                    status.append(LSTAT.PRESENT)
+                else:
+                    status.append(LSTAT.MISSING)
         self.guesses.append(guess)
         self.statuses.append(status)
 
@@ -78,8 +85,6 @@ class Guesser:
         else:
             self.update_words()
             word = self.words[0]
-        # logger.info("guess", guess=word)
-        self.add(word)
         return word
 
 
@@ -89,27 +94,70 @@ def random_word(words: Sequence[str] | None = None, seed: int | None = None) -> 
     return random.choice(words)
 
 
+def user_guess(words: Sequence[str] | None = None) -> str:
+    words = WORDS if words is None else words
+    while True:
+        guess = typer.prompt("Enter your guess (q to exit)").strip().lower()
+        if guess == "q":
+            raise typer.Exit(1)
+        if len(guess) != 5:
+            print("Guess must be 5 letters long.")
+            continue
+        if guess not in words:
+            print("Not in word list.")
+            continue
+        return guess
+
+
+def user_status() -> list[LSTAT]:
+    while True:
+        status = typer.prompt("Guess results (.-=)").lower().strip()
+        if len(status) != 5:
+            print("Status must be 5 characters long.")
+            continue
+        try:
+            lstats = [LSTAT(c) for c in status]
+        except Exception:
+            print("Could not parse status. Characters must be one on '.-='.")
+        else:
+            return lstats
+
+
 def main(
     aim: Optional[str] = None,
     initial_guess: str = "crate",
     seed: Optional[int] = None,
     n: int = 1,
     show_guesses: bool = False,
+    interactive: bool = False,
+    progress: bool = True,
 ) -> None:
     """Py-Wordle."""
-    # logger.info("start game.")
+    if interactive:
+        n = 1
+        progress = False
+        show_guesses = True
     words = WORDS
     results = []
-    for i in range(n):
+    itr = range(n)
+    if progress:
+        itr = track(itr)
+    for _ in itr:
         won = False
         word = random_word(words=words, seed=seed) if aim is None else aim
-        # logger.info("aim", aim=word)
         guesser = Guesser(word, initial_guess=initial_guess)
         for _ in range(6):
             guess = guesser.guess()
             if show_guesses:
                 print(guess)
-                # print(guesser)
+            if interactive:
+                status = user_status()
+                if status == [LSTAT.CORRECT] * 5:
+                    won = True
+                    break
+            else:
+                status = None
+            guesser.add(guess=guess, status=status)
             if guess == word:
                 if n == 1:
                     print(f"Well played. The word was {word}")
@@ -120,7 +168,8 @@ def main(
             if n == 1:
                 print(f"Unlucky. The word was {word}.")
             results.append(0)
-    print(sum(results), len(results))
+    if n > 1:
+        print(sum(results), len(results))
 
 
 if __name__ == "__main__":
