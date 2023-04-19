@@ -1,3 +1,4 @@
+from collections import Counter
 from enum import Enum
 import random
 from typing import Optional, Sequence
@@ -17,6 +18,26 @@ with open("words.txt") as fh:
     WORDS = fh.read().splitlines()
 
 
+chars = "".join(WORDS)
+counts = Counter(chars)
+
+
+WEIGHTS = {c: counts[c] / counts.total() for c in counts}
+WEIGHTS = {
+    "a": 2,
+    "e": 2,
+    "i": 2,
+    "o": 2,
+    "u": 2,
+    "t": 1,
+    "s": 1,
+    "l": 1,
+    "n": 1,
+    "r": 1,
+    "h": 1,
+}
+
+
 class LSTAT(Enum):
     MISSING = "."
     PRESENT = "-"
@@ -31,7 +52,7 @@ class Guesser:
         guesses: list[str] | None = None,
         statuses: list[list[LSTAT]] | None = None,
         words: list[str] | None = None,
-        initial_guess: str = "crate",
+        initial_guess: str | None = None,
         unknown_letters: str | None = None,
     ):
         self.word = word
@@ -70,24 +91,23 @@ class Guesser:
 
     def update_words(self) -> None:
         # breakpoint()
-        if not self.guesses:
-            return
-        # if the game is still going the last guess was incorrect
-        # self.words = [w for w in self.words if w != self.guesses[-1]]
-        prev_g = self.guesses[-1]
-        for i, (s, c) in enumerate(zip(self.statuses[-1], prev_g)):
-            match s:
-                # can do the ranking in these individual loops
-                case LSTAT.CORRECT:
-                    self.words = [w for w in self.words if w[i] == c and w != prev_g]
-                    self.unknown_letters.replace(c, "")
-                case LSTAT.PRESENT:
-                    self.words = [
-                        w for w in self.words if c in w and w[i] != c and w != prev_g
-                    ]
-                    self.unknown_letters.replace(c, "")
-                case LSTAT.MISSING:
-                    self.words = [w for w in self.words if c not in w and w != prev_g]
+        if self.guesses:
+            # if the game is still going the last guess was incorrect
+            # self.words = [w for w in self.words if w != self.guesses[-1]]
+            prev_g = self.guesses[-1]
+            for i, (s, c) in enumerate(zip(self.statuses[-1], prev_g)):
+                match s:
+                    # can do the ranking in these individual loops
+                    case LSTAT.CORRECT:
+                        self.words = [w for w in self.words if w[i] == c and w != prev_g]
+                        self.unknown_letters.replace(c, "")
+                    case LSTAT.PRESENT:
+                        self.words = [
+                            w for w in self.words if c in w and w[i] != c and w != prev_g
+                        ]
+                        self.unknown_letters.replace(c, "")
+                    case LSTAT.MISSING:
+                        self.words = [w for w in self.words if c not in w and w != prev_g]
 
         self.rank_words()
 
@@ -100,7 +120,8 @@ class Guesser:
                 # hamming distance
                 # idea being I'll learn the most from a word least similar to
                 # the last guess
-                -sum(x != y for x, y in zip(word, self.guesses[-1])),
+                # - sum(x != y for x, y in zip(word, self.guesses[-1] if self.guesses else "xxxxx")) / 5
+                #-sum([WEIGHTS.get(c, 0) for c in word]),
                 word,
             )
             for word in self.words
@@ -108,7 +129,7 @@ class Guesser:
         self.words = [word for _, word in sorted(rank)]
 
     def guess(self) -> str:
-        if not self.guesses:
+        if self.initial_guess:
             word = self.initial_guess
         else:
             self.update_words()
@@ -153,7 +174,7 @@ def user_status() -> list[LSTAT]:
 
 def main(
     aim: Optional[str] = None,
-    initial_guess: str = "crate",
+    initial_guess: Optional[str] = None,
     seed: Optional[int] = None,
     n: int = 1,
     show_guesses: bool = False,
@@ -167,6 +188,7 @@ def main(
         show_guesses = True
     if aim:
         show_guesses = True
+        progress = False
     words = WORDS
     results = []
     itr = range(n)
@@ -176,7 +198,7 @@ def main(
         won = False
         word = random_word(words=words, seed=seed) if aim is None else aim
         guesser = Guesser(word, initial_guess=initial_guess)
-        for guess_number in range(6):
+        for guess_number in range(1, 7):
             guess = guesser.guess()
             if show_guesses:
                 print(guess)
@@ -192,7 +214,7 @@ def main(
                 if n == 1:
                     print(f"Turn {guess_number}. Well played. The word was {word}")
                 won = True
-                results.append(i)
+                results.append(guess_number)
                 break
         if not won:
             if n == 1:
@@ -200,6 +222,9 @@ def main(
             results.append(0)
     if n > 1:
         correct = len([i for i in results if i > 0])
+        cts = Counter(results)
+        for i in range(0, 7):
+            print(f"{i}:{cts[i]:>6}")
         print(correct, len(results), round(correct / len(results), 4))
 
 
