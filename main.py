@@ -82,7 +82,9 @@ class Guesser:
                     self.words = [w for w in self.words if w[i] == c and w != prev_g]
                     self.unknown_letters.replace(c, "")
                 case LSTAT.PRESENT:
-                    self.words = [w for w in self.words if c in w and w != prev_g]
+                    self.words = [
+                        w for w in self.words if c in w and w[i] != c and w != prev_g
+                    ]
                     self.unknown_letters.replace(c, "")
                 case LSTAT.MISSING:
                     self.words = [w for w in self.words if c not in w and w != prev_g]
