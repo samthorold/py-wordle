@@ -84,8 +84,8 @@ class Guesser:
                     case LSTAT.MISSING:
                         # But, I use missing when there are present characters
                         # but too many of them
-                        # So, if the letter is present or correct anywhere elsewhere
-                        # skip this missing filter
+                        # So, if the letter is present or correct anywhere
+                        # elsewhere skip this missing filter
                         stats = [
                             s
                             for s, c_ in zip(self.statuses[-1], prev_g)
