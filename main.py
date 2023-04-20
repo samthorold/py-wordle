@@ -1,5 +1,6 @@
 from collections import Counter
 from enum import Enum
+from pathlib import Path
 import random
 from typing import Optional, Sequence
 
@@ -182,6 +183,7 @@ def main(
     interactive: bool = False,
     progress: bool = True,
     all_words: bool = False,
+    words_file: Path = Path("words.txt"),
 ) -> None:
     """Py-Wordle."""
 
@@ -190,7 +192,7 @@ def main(
         progress = False
         show_guesses = True
 
-    with open("words.txt") as fh:
+    with open(words_file) as fh:
         words = fh.read().splitlines()
 
     if all_words:
