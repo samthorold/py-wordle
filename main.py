@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections import Counter
 from enum import Enum
+import functools
 from pathlib import Path
 import random
 from typing import Optional, Sequence
@@ -21,27 +22,24 @@ class LSTAT(Enum):
     UNKNOWN = " "
 
 
+def present(aim: str, guess: str, guessc: str, i: int) -> LSTAT:
+    if i > 0:
+        count_aimc = len([c for c in aim if c == guessc])
+        count_stats = len([c for c in guess[:i] if c == guessc])
+        if count_aimc <= count_stats:
+            return LSTAT.MISSING
+    return LSTAT.PRESENT
+
+
+@functools.cache
 def evaluate(aim: str, guess: str) -> list[LSTAT]:
-    # result: list[tuple[str, LSTAT]] = []
     stats: list[LSTAT] = []
     for i, (aimc, guessc) in enumerate(zip(aim, guess)):
         if aimc == guessc:
-            # result.append((guessc, LSTAT.CORRECT))
             stats.append(LSTAT.CORRECT)
         elif guessc in aim:
-            if i > 0:
-                # breakpoint()
-                count_aimc = len([c for c in aim if c == guessc])
-                # count_stats = len([c for c, _ in result if c == guessc])
-                count_stats = len([c for c in guess[:i] if c == guessc])
-                if count_aimc <= count_stats:
-                    # result.append((guessc, LSTAT.MISSING))
-                    stats.append(LSTAT.MISSING)
-                    continue
-            # result.append((guessc, LSTAT.PRESENT))
-            stats.append(LSTAT.PRESENT)
+            stats.append(present(aim=aim, guess=guess, guessc=guessc, i=i))
         else:
-            # result.append((guessc, LSTAT.MISSING))
             stats.append(LSTAT.MISSING)
     return stats
 
@@ -112,7 +110,6 @@ class Guesser:
                             for s, c_ in zip(self.statuses[-1], prev_g)
                             if c_ == c
                         ]
-                        # breakpoint()
                         if any(s != LSTAT.MISSING for s in stats):
                             self.words = [
                                 w
@@ -138,31 +135,35 @@ class Guesser:
         self.ranked = True
 
     def most_wins(self) -> str:
-        # breakpoint()
         results = []
-        # print(f"{'  '*(6 - self.number_of_guesses)} {self.words}")
         self.rank_words()
-        for maybe in self.words[: self.tree_under]:
+        for maybe in self.words:
+            break_maybe = False
             word_results = []
-            for aim in self.words[: self.tree_under]:
+            for aim in self.words:
                 guesser = self.copy()
                 guesser.initial_guess = maybe
                 self.initial_guess = maybe
                 result, *_ = game(
                     guesser=guesser,
-                    # guesser=self,
                     show_guesses=False,
                     interactive=False,
                     number_of_guesses=min(self.number_of_guesses - 1, 3),
                     aim=aim,
                 )
                 self.initial_guess = None
-                # print(
-                #     f"{'  '*(6 - self.number_of_guesses)} {maybe=} {aim=} {result=}"
-                # )
                 word_results.append(result)
+                # if a word has a certain percentage of winning games, carry on
+                if (
+                    len([r for r in word_results if r > 0]) / len(self.words)
+                    > 0.5
+                ):
+                    print(f"break early with {maybe}")
+                    break_maybe = True
+                    break
             results.append((sum([r or 1e6 for r in word_results]), maybe))
-            # print(f"{'  '*(6 - self.number_of_guesses)} {sorted(results)}")
+            if break_maybe:
+                break
         results = sorted(results)
         return results[0][1]
 
