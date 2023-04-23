@@ -28,6 +28,17 @@ from main import evaluate, LSTAT
                 LSTAT.MISSING,
             ],
         ),
+        (
+            "thump",
+            "jetty",
+            [
+                LSTAT.MISSING,
+                LSTAT.MISSING,
+                LSTAT.PRESENT,
+                LSTAT.MISSING,
+                LSTAT.MISSING,
+            ],
+        ),
     ),
 )
 def test_evaluate(aim: str, guess: str, expected: list[LSTAT]) -> None:
