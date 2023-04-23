@@ -137,10 +137,14 @@ class Guesser:
     def most_wins(self) -> str:
         results = []
         self.rank_words()
+        # i = 0
         for maybe in self.words:
-            break_maybe = False
+            # break_maybe = False
             word_results = []
             for aim in self.words:
+                # if i > 1_000_000_000:
+                #     break_maybe = True
+                #     break
                 guesser = self.copy()
                 guesser.initial_guess = maybe
                 self.initial_guess = maybe
@@ -148,22 +152,16 @@ class Guesser:
                     guesser=guesser,
                     show_guesses=False,
                     interactive=False,
-                    number_of_guesses=min(self.number_of_guesses - 1, 3),
+                    number_of_guesses=self.number_of_guesses - 1,
                     aim=aim,
+                    start_guess=len(self.guesses),
                 )
                 self.initial_guess = None
                 word_results.append(result)
-                # if a word has a certain percentage of winning games, carry on
-                if (
-                    len([r for r in word_results if r > 0]) / len(self.words)
-                    > 0.5
-                ):
-                    print(f"break early with {maybe}")
-                    break_maybe = True
-                    break
-            results.append((sum([r or 1e6 for r in word_results]), maybe))
-            if break_maybe:
-                break
+                # i += 1
+            results.append((-sum([r or 7 for r in word_results]), maybe))
+            # if break_maybe:
+            #     break
         results = sorted(results)
         return results[0][1]
 
@@ -173,11 +171,12 @@ class Guesser:
             self.initial_guess = None
         else:
             self.update_words()
-            if len(self.words) < self.tree_under:
-                word = self.most_wins()
-            else:
-                self.rank_words()
-                word = self.words[0]
+            # self.rank_words()
+            # misses = len([s for s in self.statuses[-1] if s == LSTAT.MISSING])
+            # if misses > 5:
+            #     word = self.words[0]
+            # else:
+            word = self.most_wins()
         self.number_of_guesses -= 1
         return word
 
@@ -222,8 +221,10 @@ def game(
     interactive: bool,
     number_of_guesses: int,
     aim: str = "xxxxx",
-) -> tuple[int, str, str, list[str]]:
-    for guess_number in range(1, number_of_guesses + 1):
+    start_guess: int = 1,
+) -> tuple[int, str, str, str, list[str]]:
+    guess = "xxxxx"
+    for guess_number in range(start_guess, number_of_guesses + 1):
         if show_guesses:
             print(f"Remaining words: {len(guesser.words)}")
         guess = guesser.guess()
@@ -235,8 +236,8 @@ def game(
             status = evaluate(aim=aim, guess=guess)
         guesser.add(guess=guess, status=status)
         if status == [LSTAT.CORRECT] * 5:
-            return guess_number, aim, guesser.guesses[-1], guesser.words
-    return 0, aim, guesser.guesses[-1], guesser.words
+            return guess_number, guess, aim, guesser.guesses[-1], guesser.words
+    return 0, guess, aim, guesser.guesses[-1], guesser.words
 
 
 def main(
@@ -254,16 +255,19 @@ def main(
 ) -> None:
     """Py-Wordle."""
 
-    if interactive or aim:
+    if interactive or aim or n == 1:
         n = 1
         progress = False
         show_guesses = True
 
     with open(words_file) as fh:
         words = fh.read().splitlines()
+        random.shuffle(words)
 
     if all_words:
         n = len(words)
+        progress = True
+        show_guesses = False
 
     results = []
     for i in track(range(n)) if progress else range(n):
@@ -277,7 +281,7 @@ def main(
             tree_under=tree_under,
             initial_guess=initial_guess,
         )
-        result, aim_, last, poss = game(
+        result, _, aim_, last, poss = game(
             guesser=guesser,
             show_guesses=show_guesses,
             interactive=interactive,
