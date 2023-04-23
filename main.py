@@ -107,8 +107,13 @@ class Guesser:
         self.rank_words()
 
     def rank_words(self) -> None:
-        rank = [(-len(set(word)), word) for word in self.words]
-        # breakpoint()
+        letters = "".join(self.words)
+        ctr = Counter(letters)
+        letter_ranks = dict(zip(ctr, range(len(ctr), 0, -1)))
+        rank = [
+            (-len(set(word)) * 5 - sum(letter_ranks[c] for c in word), word)
+            for word in self.words
+        ]
         self.words = [word for _, word in sorted(rank)]
 
     def guess(self) -> str:
@@ -158,9 +163,10 @@ def game(
     guesser: Guesser,
     show_guesses: bool,
     interactive: bool,
+    number_of_guesses: int,
     aim: str = "xxxxx",
 ) -> tuple[int, str, str, list[str]]:
-    for guess_number in range(1, NUMBER_OF_GUESSES + 1):
+    for guess_number in range(1, number_of_guesses + 1):
         guess = guesser.guess()
         if show_guesses:
             print(guess)
@@ -179,6 +185,7 @@ def main(
     initial_guess: Optional[str] = None,
     seed: Optional[int] = None,
     n: int = 1,
+    number_of_guesses: int = 6,
     show_guesses: bool = False,
     interactive: bool = False,
     progress: bool = True,
@@ -209,6 +216,7 @@ def main(
             guesser=guesser,
             show_guesses=show_guesses,
             interactive=interactive,
+            number_of_guesses=number_of_guesses,
             aim=aim or random_word(words=words, seed=seed),
         )
         results.append(result)
@@ -224,7 +232,7 @@ def main(
     if n > 1:
         correct = len([i for i in results if i > 0])
         cts = Counter(results)
-        for i in range(0, NUMBER_OF_GUESSES + 1):
+        for i in range(0, number_of_guesses + 1):
             print(f"{i}:{cts[i]:>6}")
         print(correct, len(results), round(correct / len(results) * 100))
 
