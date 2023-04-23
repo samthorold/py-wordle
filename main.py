@@ -112,7 +112,7 @@ class Guesser:
         self.words = [word for _, word in sorted(rank)]
 
     def guess(self) -> str:
-        if self.initial_guess:
+        if not self.guesses and self.initial_guess:
             word = self.initial_guess
         else:
             self.update_words()
