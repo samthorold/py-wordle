@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections import Counter
 from enum import Enum
 from pathlib import Path
@@ -13,9 +14,6 @@ import typer
 logger = structlog.get_logger()
 
 
-NUMBER_OF_GUESSES = 13
-
-
 class LSTAT(Enum):
     MISSING = "."
     PRESENT = "-"
@@ -24,36 +22,48 @@ class LSTAT(Enum):
 
 
 def evaluate(aim: str, guess: str) -> list[LSTAT]:
-    result: list[tuple[str, LSTAT]] = []
+    # result: list[tuple[str, LSTAT]] = []
+    stats: list[LSTAT] = []
     for i, (aimc, guessc) in enumerate(zip(aim, guess)):
         if aimc == guessc:
-            result.append((guessc, LSTAT.CORRECT))
+            # result.append((guessc, LSTAT.CORRECT))
+            stats.append(LSTAT.CORRECT)
         elif guessc in aim:
             if i > 0:
                 # breakpoint()
                 count_aimc = len([c for c in aim if c == guessc])
-                count_stats = len([c for c, _ in result if c == guessc])
+                # count_stats = len([c for c, _ in result if c == guessc])
+                count_stats = len([c for c in guess[:i] if c == guessc])
                 if count_aimc <= count_stats:
-                    result.append((guessc, LSTAT.MISSING))
+                    # result.append((guessc, LSTAT.MISSING))
+                    stats.append(LSTAT.MISSING)
                     continue
-            result.append((guessc, LSTAT.PRESENT))
+            # result.append((guessc, LSTAT.PRESENT))
+            stats.append(LSTAT.PRESENT)
         else:
-            result.append((guessc, LSTAT.MISSING))
-    return [stat for _, stat in result]
+            # result.append((guessc, LSTAT.MISSING))
+            stats.append(LSTAT.MISSING)
+    return stats
 
 
 class Guesser:
     def __init__(
         self,
         words: list[str],
+        number_of_guesses: int,
+        tree_under: int,
         guesses: list[str] | None = None,
         statuses: list[list[LSTAT]] | None = None,
         initial_guess: str | None = None,
+        ranked: bool = False,
     ):
         self.words = words
+        self.number_of_guesses = number_of_guesses
+        self.tree_under = tree_under
         self.guesses = [] if guesses is None else guesses
         self.statuses = [] if statuses is None else statuses
         self.initial_guess = initial_guess
+        self.ranked = ranked
 
     def __len__(self) -> int:
         return len(self.guesses)
@@ -61,6 +71,16 @@ class Guesser:
     def __str__(self) -> str:
         return "\n".join(
             ["".join(f"{s.value}" for s in status) for status in self.statuses]
+        )
+
+    def copy(self) -> Guesser:
+        return Guesser(
+            words=self.words,
+            number_of_guesses=self.number_of_guesses,
+            tree_under=self.tree_under,
+            guesses=self.guesses,
+            statuses=self.statuses,
+            ranked=self.ranked,
         )
 
     def add(self, guess: str, status: list[LSTAT]) -> None:
@@ -104,9 +124,9 @@ class Guesser:
                             w for w in self.words if c not in w and w != prev_g
                         ]
 
-        self.rank_words()
-
     def rank_words(self) -> None:
+        if self.ranked:
+            return
         letters = "".join(self.words)
         ctr = Counter(letters)
         letter_ranks = dict(zip(ctr, range(len(ctr), 0, -1)))
@@ -115,13 +135,49 @@ class Guesser:
             for word in self.words
         ]
         self.words = [word for _, word in sorted(rank)]
+        self.ranked = True
+
+    def most_wins(self) -> str:
+        # breakpoint()
+        results = []
+        # print(f"{'  '*(6 - self.number_of_guesses)} {self.words}")
+        self.rank_words()
+        for maybe in self.words[: self.tree_under]:
+            word_results = []
+            for aim in self.words[: self.tree_under]:
+                guesser = self.copy()
+                guesser.initial_guess = maybe
+                self.initial_guess = maybe
+                result, *_ = game(
+                    guesser=guesser,
+                    # guesser=self,
+                    show_guesses=False,
+                    interactive=False,
+                    number_of_guesses=min(self.number_of_guesses - 1, 3),
+                    aim=aim,
+                )
+                self.initial_guess = None
+                # print(
+                #     f"{'  '*(6 - self.number_of_guesses)} {maybe=} {aim=} {result=}"
+                # )
+                word_results.append(result)
+            results.append((sum([r or 1e6 for r in word_results]), maybe))
+            # print(f"{'  '*(6 - self.number_of_guesses)} {sorted(results)}")
+        results = sorted(results)
+        return results[0][1]
 
     def guess(self) -> str:
-        if not self.guesses and self.initial_guess:
+        if self.initial_guess is not None:
             word = self.initial_guess
+            self.initial_guess = None
         else:
             self.update_words()
-            word = self.words[0]
+            if len(self.words) < self.tree_under:
+                word = self.most_wins()
+            else:
+                self.rank_words()
+                word = self.words[0]
+        self.number_of_guesses -= 1
         return word
 
 
@@ -167,9 +223,11 @@ def game(
     aim: str = "xxxxx",
 ) -> tuple[int, str, str, list[str]]:
     for guess_number in range(1, number_of_guesses + 1):
+        if show_guesses:
+            print(f"Remaining words: {len(guesser.words)}")
         guess = guesser.guess()
         if show_guesses:
-            print(guess)
+            print(f"{guess_number}: {guess}")
         if interactive:
             status = user_status()
         else:
@@ -186,6 +244,7 @@ def main(
     seed: Optional[int] = None,
     n: int = 1,
     number_of_guesses: int = 6,
+    tree_under: int = 20,
     show_guesses: bool = False,
     interactive: bool = False,
     progress: bool = True,
@@ -211,7 +270,12 @@ def main(
             aim = words[i]
         if interactive and aim is None:
             aim = "xxxxx"
-        guesser = Guesser(words=words, initial_guess=initial_guess)
+        guesser = Guesser(
+            words=words,
+            number_of_guesses=number_of_guesses,
+            tree_under=tree_under,
+            initial_guess=initial_guess,
+        )
         result, aim_, last, poss = game(
             guesser=guesser,
             show_guesses=show_guesses,
