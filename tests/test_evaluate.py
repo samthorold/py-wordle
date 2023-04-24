@@ -1,47 +1,17 @@
 import pytest
 
-from main import evaluate, score, CharStat
+from main import Status, evaluate, _score, _Status
 
 
 @pytest.mark.parametrize(
     "aim,guess,expected",
     (
-        (
-            "troll",
-            "twist",
-            [
-                CharStat.CORRECT,
-                CharStat.MISSING,
-                CharStat.MISSING,
-                CharStat.MISSING,
-                CharStat.MISSING,
-            ],
-        ),
-        (
-            "scorn",
-            "abeng",
-            [
-                CharStat.MISSING,
-                CharStat.MISSING,
-                CharStat.MISSING,
-                CharStat.PRESENT,
-                CharStat.MISSING,
-            ],
-        ),
-        (
-            "thump",
-            "jetty",
-            [
-                CharStat.MISSING,
-                CharStat.MISSING,
-                CharStat.PRESENT,
-                CharStat.MISSING,
-                CharStat.MISSING,
-            ],
-        ),
+        ("troll", "twist", ("=", ".", ".", ".", ".")),
+        ("scorn", "abeng", (".", ".", ".", "-", ".")),
+        ("thump", "jetty", (".", ".", "-", ".", ".")),
     ),
 )
-def test_evaluate(aim: str, guess: str, expected: list[CharStat]) -> None:
+def test_evaluate(aim: str, guess: str, expected: list[_Status]) -> None:
     got = evaluate(aim=aim, guess=guess)
     assert got == expected
 
@@ -49,14 +19,13 @@ def test_evaluate(aim: str, guess: str, expected: list[CharStat]) -> None:
 @pytest.mark.parametrize(
     "status,expected",
     (
-        (".....", 0),
-        ("-....", 1),
-        ("....-", 1),
-        ("....=", 3),
-        (".-..=", 4),
+        ((".", ".", ".", ".", "."), 0),
+        ((".", ".", "-", ".", "."), 1),
+        ((".", ".", ".", ".", "-"), 1),
+        ((".", "=", ".", ".", "."), 3),
+        (("-", ".", ".", "=", "."), 4),
     ),
 )
-def test_score(status: str, expected: int) -> None:
-    st = CharStat.from_string(status)
-    got = score(st)
+def test_score(status: Status, expected: int) -> None:
+    got = _score(status)
     assert got == expected
