@@ -1,4 +1,3 @@
-structlog
 typer[all]
 
 # dev

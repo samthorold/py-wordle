@@ -1,6 +1,6 @@
 import pytest
 
-from main import evaluate, LSTAT
+from main import evaluate, score, CharStat
 
 
 @pytest.mark.parametrize(
@@ -10,37 +10,53 @@ from main import evaluate, LSTAT
             "troll",
             "twist",
             [
-                LSTAT.CORRECT,
-                LSTAT.MISSING,
-                LSTAT.MISSING,
-                LSTAT.MISSING,
-                LSTAT.MISSING,
+                CharStat.CORRECT,
+                CharStat.MISSING,
+                CharStat.MISSING,
+                CharStat.MISSING,
+                CharStat.MISSING,
             ],
         ),
         (
             "scorn",
             "abeng",
             [
-                LSTAT.MISSING,
-                LSTAT.MISSING,
-                LSTAT.MISSING,
-                LSTAT.PRESENT,
-                LSTAT.MISSING,
+                CharStat.MISSING,
+                CharStat.MISSING,
+                CharStat.MISSING,
+                CharStat.PRESENT,
+                CharStat.MISSING,
             ],
         ),
         (
             "thump",
             "jetty",
             [
-                LSTAT.MISSING,
-                LSTAT.MISSING,
-                LSTAT.PRESENT,
-                LSTAT.MISSING,
-                LSTAT.MISSING,
+                CharStat.MISSING,
+                CharStat.MISSING,
+                CharStat.PRESENT,
+                CharStat.MISSING,
+                CharStat.MISSING,
             ],
         ),
     ),
 )
-def test_evaluate(aim: str, guess: str, expected: list[LSTAT]) -> None:
+def test_evaluate(aim: str, guess: str, expected: list[CharStat]) -> None:
     got = evaluate(aim=aim, guess=guess)
+    assert got == expected
+
+
+@pytest.mark.parametrize(
+    "status,expected",
+    (
+        (".....", 0),
+        ("-....", 1),
+        ("....-", 1),
+        ("....=", 3),
+        (".-..=", 4),
+    ),
+)
+def test_score(status: str, expected: int) -> None:
+    st = CharStat.from_string(status)
+    got = score(st)
     assert got == expected

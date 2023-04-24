@@ -8,40 +8,67 @@ from typing import Optional, Sequence
 
 from rich import print
 from rich.progress import track
-import structlog
 import typer
 
 
-logger = structlog.get_logger()
-
-
-class LSTAT(Enum):
+class CharStat(Enum):
     MISSING = "."
     PRESENT = "-"
     CORRECT = "="
     UNKNOWN = " "
 
+    @classmethod
+    def from_string(cls, string: str) -> Status:
+        return (
+            cls(string[0]),
+            cls(string[1]),
+            cls(string[2]),
+            cls(string[3]),
+            cls(string[4]),
+        )
 
-def present(aim: str, guess: str, guessc: str, i: int) -> LSTAT:
+
+SCORES = {
+    CharStat.PRESENT: 1,
+    CharStat.CORRECT: 3,
+}
+
+
+Status = tuple[CharStat, CharStat, CharStat, CharStat, CharStat]
+
+
+def score(status: Status, scores: dict[CharStat, int] | None = None) -> int:
+    scores = SCORES if scores is None else scores
+    return sum(scores.get(s, 0) for s in status)
+
+
+def present(aim: str, guess: str, guessc: str, i: int) -> CharStat:
     if i > 0:
         count_aimc = len([c for c in aim if c == guessc])
         count_stats = len([c for c in guess[:i] if c == guessc])
         if count_aimc <= count_stats:
-            return LSTAT.MISSING
-    return LSTAT.PRESENT
+            return CharStat.MISSING
+    return CharStat.PRESENT
 
 
 @functools.cache
-def evaluate(aim: str, guess: str) -> list[LSTAT]:
-    stats: list[LSTAT] = []
+def evaluate(aim: str, guess: str) -> list[CharStat]:
+    stats: list[CharStat] = []
     for i, (aimc, guessc) in enumerate(zip(aim, guess)):
         if aimc == guessc:
-            stats.append(LSTAT.CORRECT)
+            stats.append(CharStat.CORRECT)
         elif guessc in aim:
             stats.append(present(aim=aim, guess=guess, guessc=guessc, i=i))
         else:
-            stats.append(LSTAT.MISSING)
+            stats.append(CharStat.MISSING)
     return stats
+
+
+def score_word(
+    word: str, aim: str, scores: dict[CharStat, int] | None = None
+) -> list[int]:
+    status = evaluate(aim=aim, guess=word)
+    return score(status, scores=scores)
 
 
 class Guesser:
@@ -51,7 +78,7 @@ class Guesser:
         number_of_guesses: int,
         tree_under: int,
         guesses: list[str] | None = None,
-        statuses: list[list[LSTAT]] | None = None,
+        statuses: list[list[CharStat]] | None = None,
         initial_guess: str | None = None,
         ranked: bool = False,
     ):
@@ -81,7 +108,7 @@ class Guesser:
             ranked=self.ranked,
         )
 
-    def add(self, guess: str, status: list[LSTAT]) -> None:
+    def add(self, guess: str, status: list[CharStat]) -> None:
         self.guesses.append(guess)
         self.statuses.append(status)
 
@@ -90,17 +117,17 @@ class Guesser:
             prev_g = self.guesses[-1]
             for i, (s, c) in enumerate(zip(self.statuses[-1], prev_g)):
                 match s:
-                    case LSTAT.CORRECT:
+                    case CharStat.CORRECT:
                         self.words = [
                             w for w in self.words if w[i] == c and w != prev_g
                         ]
-                    case LSTAT.PRESENT:
+                    case CharStat.PRESENT:
                         self.words = [
                             w
                             for w in self.words
                             if c in w and w[i] != c and w != prev_g
                         ]
-                    case LSTAT.MISSING:
+                    case CharStat.MISSING:
                         # But, I use missing when there are present characters
                         # but too many of them
                         # So, if the letter is present or correct anywhere
@@ -110,7 +137,7 @@ class Guesser:
                             for s, c_ in zip(self.statuses[-1], prev_g)
                             if c_ == c
                         ]
-                        if any(s != LSTAT.MISSING for s in stats):
+                        if any(s != CharStat.MISSING for s in stats):
                             self.words = [
                                 w
                                 for w in self.words
@@ -171,11 +198,6 @@ class Guesser:
             self.initial_guess = None
         else:
             self.update_words()
-            # self.rank_words()
-            # misses = len([s for s in self.statuses[-1] if s == LSTAT.MISSING])
-            # if misses > 5:
-            #     word = self.words[0]
-            # else:
             word = self.most_wins()
         self.number_of_guesses -= 1
         return word
@@ -201,14 +223,14 @@ def user_guess(words: Sequence[str]) -> str:
         return guess
 
 
-def user_status() -> list[LSTAT]:
+def user_status() -> list[CharStat]:
     while True:
         status = typer.prompt("Guess results (.-=)").lower().strip()
         if len(status) != 5:
             print("Status must be 5 characters long.")
             continue
         try:
-            lstats = [LSTAT(c) for c in status]
+            lstats = [CharStat(c) for c in status]
         except Exception:
             print("Could not parse status. Characters must be one on '.-='.")
         else:
@@ -235,7 +257,7 @@ def game(
         else:
             status = evaluate(aim=aim, guess=guess)
         guesser.add(guess=guess, status=status)
-        if status == [LSTAT.CORRECT] * 5:
+        if status == [CharStat.CORRECT] * 5:
             return guess_number, guess, aim, guesser.guesses[-1], guesser.words
     return 0, guess, aim, guesser.guesses[-1], guesser.words
 
