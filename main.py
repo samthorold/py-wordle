@@ -52,7 +52,7 @@ def present(aim: str, guess: str, guessc: str, i: int) -> CharStat:
 
 
 @functools.cache
-def evaluate(aim: str, guess: str) -> list[CharStat]:
+def evaluate(aim: str, guess: str) -> Status:
     stats: list[CharStat] = []
     for i, (aimc, guessc) in enumerate(zip(aim, guess)):
         if aimc == guessc:
@@ -61,12 +61,12 @@ def evaluate(aim: str, guess: str) -> list[CharStat]:
             stats.append(present(aim=aim, guess=guess, guessc=guessc, i=i))
         else:
             stats.append(CharStat.MISSING)
-    return stats
+    return tuple([stats[0], stats[1], stats[2], stats[3], stats[4]])
 
 
 def score_word(
     word: str, aim: str, scores: dict[CharStat, int] | None = None
-) -> list[int]:
+) -> int:
     status = evaluate(aim=aim, guess=word)
     return score(status, scores=scores)
 
@@ -78,7 +78,7 @@ class Guesser:
         number_of_guesses: int,
         tree_under: int,
         guesses: list[str] | None = None,
-        statuses: list[list[CharStat]] | None = None,
+        statuses: list[Status] | None = None,
         initial_guess: str | None = None,
         ranked: bool = False,
     ):
@@ -108,7 +108,7 @@ class Guesser:
             ranked=self.ranked,
         )
 
-    def add(self, guess: str, status: list[CharStat]) -> None:
+    def add(self, guess: str, status: Status) -> None:
         self.guesses.append(guess)
         self.statuses.append(status)
 
@@ -223,7 +223,7 @@ def user_guess(words: Sequence[str]) -> str:
         return guess
 
 
-def user_status() -> list[CharStat]:
+def user_status() -> Status:
     while True:
         status = typer.prompt("Guess results (.-=)").lower().strip()
         if len(status) != 5:
@@ -234,7 +234,9 @@ def user_status() -> list[CharStat]:
         except Exception:
             print("Could not parse status. Characters must be one on '.-='.")
         else:
-            return lstats
+            return tuple(
+                [lstats[0], lstats[1], lstats[2], lstats[3], lstats[4]]
+            )
 
 
 def game(
