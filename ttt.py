@@ -52,15 +52,11 @@ class Board:
         self.moves: list[Move] = [] if moves is None else moves
         self.depth = depth
 
-    def __gt__(self, other: Board | int) -> bool:
-        if isinstance(other, Board):
-            other = other.score()
-        return self.score() > other
+    def __gt__(self, other: Board) -> bool:
+        return self.score() > other.score()
 
-    def __lt__(self, other: Board | int) -> bool:
-        if isinstance(other, Board):
-            other = other.score()
-        return self.score() < other
+    def __lt__(self, other: Board) -> bool:
+        return self.score() < other.score()
 
     def string(self) -> str:
         s = f"{self.player} to play ...\n"
@@ -131,21 +127,18 @@ def minimax(board: Board) -> Board:
 
     # maximising player
     if board.player == Player.X:
-        best_board = -10
+        best_board = Board.from_string("ooo......")
         for child in children(board):
             best_board = max(best_board, minimax(child))
 
     # minimising player
     elif board.player == Player.O:
-        best_board = 10
+        best_board = Board.from_string("xxx......")
         for child in children(board):
             best_board = min(best_board, minimax(child))
 
     else:
         raise ValueError(f"Unknown player {board.player}.")
-
-    if isinstance(best_board, int):
-        raise RuntimeError("Well, this is not ideal. Seems no solution was found.")
 
     return best_board
 
