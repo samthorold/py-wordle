@@ -163,6 +163,8 @@ def main() -> int:
             print(s)
             break
         variation = minimax(board)
+        print(variation.string())
+        print(variation.moves)
         move = variation.moves[board.depth]
         logger.info("%s %s", board.next_player(), move)
         board = board.move(move)
