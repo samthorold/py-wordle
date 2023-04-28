@@ -2,12 +2,8 @@
 
 from __future__ import annotations
 from enum import Enum
-import logging
 import sys
 from typing import Iterator
-
-
-logger = logging.getLogger(__name__)
 
 
 class IllegalMove(Exception):
@@ -71,11 +67,9 @@ class Board:
         rix, cix = move
         if self.board[rix][cix]:
             msg = f"row={rix}, col={cix} is occupied ({self.board[rix][cix]})"
-            logger.error(msg)
             raise IllegalMove(msg)
         next_board = [[v for v in row] for row in self.board]
         next_board[rix][cix] = self.player
-        logger.debug("%s %s %s", self.player, rix, cix)
         return Board(
             state=next_board,
             player=self.next_player(),
@@ -121,45 +115,39 @@ def children(board: Board) -> Iterator[Board]:
             yield board.move((rix, cix))
 
 
-def minimax(board: Board) -> Board:
+def minimax(board: Board) -> tuple[Board, Move]:
     if board.score() or board.completed():
-        return board
+        return board, (-1, -1)
 
     # maximising player
     if board.player == Player.X:
         best_board = Board.from_string("ooo......")
         for child in children(board):
-            best_board = max(best_board, minimax(child))
+            best_board = max(best_board, minimax(child)[0])
 
     # minimising player
     elif board.player == Player.O:
         best_board = Board.from_string("xxx......")
         for child in children(board):
-            best_board = min(best_board, minimax(child))
+            best_board = min(best_board, minimax(child)[0])
 
     else:
         raise ValueError(f"Unknown player {board.player}.")
 
-    return best_board
+    return best_board, best_board.moves[board.depth]
 
 
 def main() -> int:
-    logging.basicConfig(level=logging.WARNING)
     board = Board.from_string("." * 9, Player.O)
     while True:
         r, c = [int(m) for m in input("Move: ")]
         board = board.move((r, c))
-        logger.info("%s %s", board.next_player(), board.moves[-1])
         print(board.string())
         s = board.score()
         if s or board.completed():
             print(s)
             break
-        variation = minimax(board)
-        print(variation.string())
-        print(variation.moves)
-        move = variation.moves[board.depth]
-        logger.info("%s %s", board.next_player(), move)
+        _, move = minimax(board)
         board = board.move(move)
         print(board.string())
         s = board.score()
@@ -170,16 +158,5 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    # board = Board.from_string(".........", Player.O)
-    # board = board.move((1, 1))
-    # print(board.string())
-    # variation = minimax(board)
-    # print(variation.string())
-    # print(variation.moves, board.depth)
-
-    # move = minimax(board, "x")
-    # print(move)
-    # print(string(move[0]))
-
     code = main()
     sys.exit(code)
