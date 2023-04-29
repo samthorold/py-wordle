@@ -53,6 +53,15 @@ class Board:
     def __lt__(self, other: Board) -> bool:
         return self.score() < other.score()
 
+    def is_maximising_player(self) -> bool:
+        return self.player == Player.X
+
+    def minimum(self) -> Board:
+        return Board.from_string("ooo......")
+
+    def maximum(self) -> Board:
+        return Board.from_string("xxx......")
+
     def string(self) -> str:
         s = f"{self.player} to play ...\n"
         for row in self.board:
@@ -102,13 +111,11 @@ class Board:
     def next_player(self) -> Player:
         return Player.X if self.player == Player.O else Player.O
 
-
-def children(board: Board) -> Iterator[Board]:
-    # if the board is full or the last player just won
-    if board.is_terminal():
-        return
-    for rix, row in enumerate(board.board):
-        for cix, val in enumerate(row):
-            if val:
-                continue
-            yield board.move((rix, cix))
+    def children(self) -> Iterator[Board]:
+        if self.is_terminal():
+            return
+        for rix, row in enumerate(self.board):
+            for cix, val in enumerate(row):
+                if val:
+                    continue
+                yield self.move((rix, cix))

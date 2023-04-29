@@ -1,30 +1,46 @@
-from typing import Protocol
-
-from ttt.ttt import Board, Move, Player, children
+from typing import Any, Iterator, Protocol, Self
 
 
 class Node(Protocol):
+    moves: list[Any]
+
+    def __gt__(self, other: Self) -> bool:
+        return self.score() > other.score()
+
+    def __lt__(self, other: Self) -> bool:
+        return self.score() < other.score()
+
     def score(self) -> int:
         ...
 
-    def completed(self) -> bool:
+    def is_terminal(self) -> bool:
+        ...
+
+    def children(self) -> Iterator[Self]:
+        ...
+
+    def is_maximising_player(self) -> bool:
+        ...
+
+    def minimum(self) -> Self:
+        ...
+
+    def maximum(self) -> Self:
         ...
 
 
-def minimax(
-    board: Board, maximising_player: Player = Player.X
-) -> tuple[Board, Move]:
-    if board.is_terminal():
-        return board, (-1, -1)
+def minimax(node: Node) -> Node:
+    if node.is_terminal():
+        return node
 
-    if board.player == maximising_player:
-        best_board = Board.from_string("ooo......")
-        for child in children(board):
-            best_board = max(best_board, minimax(child)[0])
+    if node.is_maximising_player():
+        best_node = node.minimum()
+        for child in node.children():
+            best_node = max(best_node, minimax(child))
 
     else:
-        best_board = Board.from_string("xxx......")
-        for child in children(board):
-            best_board = min(best_board, minimax(child)[0])
+        best_node = node.maximum()
+        for child in node.children():
+            best_node = min(best_node, minimax(child))
 
-    return best_board, best_board.moves[board.depth]
+    return best_node

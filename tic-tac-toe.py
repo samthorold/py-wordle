@@ -11,8 +11,8 @@ def main() -> None:
         if board.is_terminal():
             print(board.score())
             break
-        _, move = minimax(board)
-        board = board.move(move)
+        variation = minimax(board)
+        board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():
             print(board.score())
