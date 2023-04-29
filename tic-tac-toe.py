@@ -1,4 +1,4 @@
-from ttt.minimax import minimax
+from minimax import minimax
 from ttt.ttt import Board, Player
 
 

@@ -2,9 +2,7 @@ from typing import Any, Iterator, Protocol, Self
 
 
 class Node(Protocol):
-    """Requiring comparison operators allows users to rank on something other
-    than e.g. purely score.
-    """
+    """Comparison operators allows users to rank on more than just score."""
 
     moves: list[Any]
 
