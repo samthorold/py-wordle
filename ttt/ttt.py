@@ -53,7 +53,7 @@ class Board:
     def __lt__(self, other: Board) -> bool:
         return self.score() < other.score()
 
-    def is_maximising_player(self) -> bool:
+    def is_maximising(self) -> bool:
         return self.player == Player.X
 
     def minimum(self) -> Board:

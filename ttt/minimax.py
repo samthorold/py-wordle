@@ -2,6 +2,10 @@ from typing import Any, Iterator, Protocol, Self
 
 
 class Node(Protocol):
+    """Requiring comparison operators allows users to rank on something other
+    than e.g. purely score.
+    """
+
     moves: list[Any]
 
     def __gt__(self, other: Self) -> bool:
@@ -19,7 +23,7 @@ class Node(Protocol):
     def children(self) -> Iterator[Self]:
         ...
 
-    def is_maximising_player(self) -> bool:
+    def is_maximising(self) -> bool:
         ...
 
     def minimum(self) -> Self:
@@ -33,14 +37,12 @@ def minimax(node: Node) -> Node:
     if node.is_terminal():
         return node
 
-    if node.is_maximising_player():
-        best_node = node.minimum()
-        for child in node.children():
-            best_node = max(best_node, minimax(child))
+    best_node = node.minimum() if node.is_maximising() else node.maximum()
 
-    else:
-        best_node = node.maximum()
-        for child in node.children():
+    for child in node.children():
+        if node.is_maximising():
+            best_node = max(best_node, minimax(child))
+        else:
             best_node = min(best_node, minimax(child))
 
     return best_node
