@@ -1,4 +1,4 @@
-from typing import Any, Iterator, Protocol, Self
+from typing import Any, Iterator, Protocol, Self, Sequence
 
 
 class Node(Protocol):
@@ -32,6 +32,7 @@ class Node(Protocol):
 
 
 def minimax(node: Node) -> Node:
+    # breakpoint()
     if node.is_terminal():
         return node
 
