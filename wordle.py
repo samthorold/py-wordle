@@ -101,11 +101,6 @@ class Board:
         is_min: bool = False,
         is_max: bool = False,
     ):
-        # words = update_words(
-        #     words=words,
-        #     guesses=moves,
-        #     statuses=statuses,
-        # )
         self.words = words
         self.moves = moves
         self.statuses = statuses
@@ -119,6 +114,12 @@ class Board:
 
     def __lt__(self, other: Board) -> bool:
         return self.score() < other.score()
+
+    def __ge__(self, other: Board) -> bool:
+        return self.score() >= other.score()
+
+    def __le__(self, other: Board) -> bool:
+        return self.score() <= other.score()
 
     def is_maximising(self) -> bool:
         return self.player == Player.X
@@ -165,19 +166,8 @@ class Board:
             moves=moves,
             statuses=statuses,
             player=self.next_player(),
-            # this seems broken
-            # depth=self.depth + 1 if not self.is_maximising() else 0,
-            # depth=len(self.statuses),
             depth=self.depth + 1,
         )
-
-        print(
-            f"{new_board.depth:>2} "
-            f"{new_board.player.value} "
-            f"{len(new_board.moves)} "
-            f"{len(new_board.statuses)} "
-        )
-        print(new_board)
 
         return new_board
 
@@ -207,19 +197,7 @@ class Board:
             if self.is_maximising():
                 yield self.move(Guess(word))
             else:
-                potential_move = self.move(evaluate(Guess(word), self.moves[-1]))
-                # at the moment this does nothing because we update words on Board init
-                # which applies all the statuses to the potential word list
-                if potential_move.score() >= self.score():
-                    # print("self")
-                    # print(self)
-                    # print(self.score(), len(self.words))
-                    # print("potential move")
-                    # print(potential_move)
-                    # print(potential_move.score(), len(self.words))
-                    yield potential_move
-                # else:
-                #     print(f"pruning {potential_move}")
+                yield self.move(evaluate(Guess(word), self.moves[-1]))
 
 
 def update_words(

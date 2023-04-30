@@ -22,7 +22,7 @@ class Board:
     def from_string(
         cls,
         string: str,
-        player: Player = Player.O,
+        player: Player = Player.X,
         depth: int = 0,
     ) -> Board:
         state = "." * 9 if string is None else string
@@ -52,6 +52,12 @@ class Board:
 
     def __lt__(self, other: Board) -> bool:
         return self.score() < other.score()
+
+    def __ge__(self, other: Board) -> bool:
+        return self.score() >= other.score()
+
+    def __le__(self, other: Board) -> bool:
+        return self.score() <= other.score()
 
     def is_maximising(self) -> bool:
         return self.player == Player.X
@@ -124,13 +130,14 @@ class Board:
 def main() -> None:
     board = Board.from_string("." * 9, Player.O)
     while True:
-        r, c = [int(m) for m in input("Move: ")]
-        board = board.move((r, c))
+        # r, c = [int(m) for m in input("Move: ")]
+        variation = search.minimax(board)  # , board.minimum(), board.maximum())
+        board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():
             print(board.score())
             break
-        variation = search.alphabeta(board, board.minimum(), board.maximum())
+        variation = search.minimax(board)  # , board.minimum(), board.maximum())
         board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():
