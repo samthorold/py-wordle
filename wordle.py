@@ -283,7 +283,7 @@ def update_words(
     return words
 
 
-def main(words: set[str], aim: str) -> None:
+def main(words: set[str], aim: str) -> int:
     if aim not in words:
         raise ValueError("Aim not in words, might struggle.")
 
@@ -294,7 +294,7 @@ def main(words: set[str], aim: str) -> None:
     )
 
     while True:
-        if board.score() < 5:
+        if (not board.moves) or (len(board.words) > 50):
             move = board.lowest_scoring_move()
             board = board.move(move)
         else:
@@ -302,11 +302,9 @@ def main(words: set[str], aim: str) -> None:
             board = board.move(variation.moves[len(board.moves)])
         status = evaluate(Guess(aim), board.moves[-1])
         board = board.move(status)
-        print(board)
         if board.is_terminal():
-            print(board.score())
             break
-        print()
+    return board.score()
 
 
 if __name__ == "__main__":
@@ -326,8 +324,11 @@ if __name__ == "__main__":
         "noose",
         "maxim",
     ]
-    with open("words.txt") as fh:
+    with open("words-tiny.txt") as fh:
         words = fh.read().split("\n")
 
-    # main(set(words), "burnt")
-    main(set(words), "fizzy")
+    results = []
+    for i, word in enumerate(words):
+        results.append(main(set(words), word))
+        if not i % 25:
+            print(len([r for r in results if r == 10]), len(results))
