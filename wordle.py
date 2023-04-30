@@ -1,9 +1,12 @@
 from __future__ import annotations
 from enum import Enum
 import functools
-from typing import Iterator, Sequence
+from typing import Iterable, Iterator, Sequence
 
-from minimax import minimax
+import search
+
+
+GUESS_LEN = 5
 
 
 class Status(Enum):
@@ -15,19 +18,46 @@ class Status(Enum):
 # only cos isinstance in Board.move
 class Guess:
     def __init__(self, guess: str):
+        if len(guess) != GUESS_LEN:
+            raise ValueError(f"Guess '{guess}' must be length {GUESS_LEN}.")
         self._guess = guess
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[str]:
         return iter(self._guess)
 
-    def __getitem__(self, idx):
-        return self._guess[idx]
+    # def __getitem__(self, idx):
+    #    return self._guess[idx]
 
     def __str__(self) -> str:
         return self._guess
 
+    def __contains__(self, o: str) -> bool:
+        return o in self._guess
 
-GuessStatus = tuple[Status, Status, Status, Status, Status]
+
+class GuessStatus:
+    def __init__(self, status: str):
+        if len(status) != GUESS_LEN:
+            raise ValueError(f"Status'{status}' must be length {GUESS_LEN}.")
+        self._status = [Status(s) for s in status]
+
+    def __iter__(self) -> Iterable[Status]:
+        return iter(self._status)
+
+    # def __getitem__(self, idx):
+    #    return self._status[idx]
+
+    def __str__(self) -> str:
+        return "".join(s.value for s in self._status)
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GuessStatus):
+            raise NotImplemented
+        return self._status == other._status
+
+
+CORRECT_GUESS = GuessStatus("".join(s.value for s in [Status.CORRECT] * GUESS_LEN))
+
 
 SCORES = {
     Status.MISSING: 0,
@@ -45,14 +75,14 @@ class Board:
     @classmethod
     def from_string(
         cls,
-        words: Sequence[str],
+        words: set[str],
         moves: Sequence[str],
         statuses: Sequence[str],
         player: Player = Player.X,
         depth: int = 0,
     ) -> Board:
         gs = [Guess(g) for g in moves]
-        ss = tuple([tuple([Status(x) for x in s]) for s in statuses])
+        ss = [GuessStatus(s) for s in statuses]
         return Board(
             words=words,
             moves=gs,
@@ -63,19 +93,20 @@ class Board:
 
     def __init__(
         self,
-        words: Sequence[str],
+        words: set[str],
         moves: list[Guess],
-        statuses: tuple[GuessStatus, ...],
+        statuses: list[GuessStatus],
         player: Player = Player.X,
         depth: int = 0,
         is_min: bool = False,
         is_max: bool = False,
     ):
-        self.words = update_words(
-            words=words,
-            guesses=moves,
-            statuses=statuses,
-        )
+        # words = update_words(
+        #     words=words,
+        #     guesses=moves,
+        #     statuses=statuses,
+        # )
+        self.words = words
         self.moves = moves
         self.statuses = statuses
         self.player = player
@@ -94,54 +125,76 @@ class Board:
 
     def minimum(self) -> Board:
         return Board(
-            words=[],
+            words=set(),
             moves=[],
-            statuses=tuple(),
+            statuses=[],
             is_min=True,
         )
 
     def maximum(self) -> Board:
         return Board(
-            words=[],
+            words=set(),
             moves=[],
-            statuses=tuple(),
+            statuses=[],
             is_max=True,
         )
 
     def __str__(self) -> str:
         guesses = "\n".join([str(row) for row in self.moves])
         if self.statuses and (len(self.statuses) == len(self.moves)):
-            status = "\n" + ", ".join([s.value for s in self.statuses[-1]])
+            status = "\n" + f"{self.statuses[-1]}"
         else:
             status = ""
         return f"{guesses}{status}"
 
     def move(self, move: Guess | GuessStatus) -> Board:
         if isinstance(move, Guess):
-            moves = list(self.moves) + [move]
+            moves = self.moves + [move]
             statuses = self.statuses
         else:
             moves = [m for m in self.moves]
-            statuses = tuple(list(self.statuses) + [move])
+            statuses = self.statuses + [move]
 
-        return Board(
-            words=self.words,
+        if (not self.is_maximising()) and self.moves:
+            words = self.words - set([str(self.moves[-1])])
+        else:
+            words = self.words
+
+        new_board = Board(
+            words=words,
             moves=moves,
             statuses=statuses,
             player=self.next_player(),
-            depth=self.depth + 1 if not self.is_maximising() else 0,
+            # this seems broken
+            # depth=self.depth + 1 if not self.is_maximising() else 0,
+            # depth=len(self.statuses),
+            depth=self.depth + 1,
         )
+
+        print(
+            f"{new_board.depth:>2} "
+            f"{new_board.player.value} "
+            f"{len(new_board.moves)} "
+            f"{len(new_board.statuses)} "
+        )
+        print(new_board)
+
+        return new_board
 
     def score(self) -> int:
         if self.is_min:
             return -100
         if self.is_max:
             return 100
-        return sum(SCORES[s] for s in self.statuses[-1])
+        if not self.statuses:
+            return 0
+        return sum(SCORES[Status(s)] for s in str(self.statuses[-1]))
 
     def is_terminal(self) -> bool:
+        if self.is_min or self.is_max:
+            return False
         run_out_of_guesses = len(self.statuses) == 6
-        correct = any(s == tuple([Status.CORRECT] * 5) for s in self.statuses)
+        correct = any(s == CORRECT_GUESS for s in self.statuses)
         return run_out_of_guesses or correct
 
     def next_player(self) -> Player:
@@ -154,43 +207,55 @@ class Board:
             if self.is_maximising():
                 yield self.move(Guess(word))
             else:
-                yield self.move(evaluate(Guess(word), self.moves[-1]))
+                potential_move = self.move(evaluate(Guess(word), self.moves[-1]))
+                # at the moment this does nothing because we update words on Board init
+                # which applies all the statuses to the potential word list
+                if potential_move.score() >= self.score():
+                    # print("self")
+                    # print(self)
+                    # print(self.score(), len(self.words))
+                    # print("potential move")
+                    # print(potential_move)
+                    # print(potential_move.score(), len(self.words))
+                    yield potential_move
+                # else:
+                #     print(f"pruning {potential_move}")
 
 
 def update_words(
     words: Sequence[str],
     guesses: list[Guess],
-    statuses: tuple[GuessStatus, ...],
+    statuses: list[GuessStatus],
 ) -> Sequence[str]:
     if not guesses:
         return words
 
     for guess, status in zip(guesses, statuses):
-        if status == tuple([Status.CORRECT] * 5):
-            return ["".join(guess)]
+        if status == CORRECT_GUESS:
+            return [str(guess)]
         else:
-            words = [w for w in words if w != "".join(guess)]
+            words = [w for w in words if w != str(guess)]
 
-        for i, (c, s) in enumerate(zip(guess, status)):
+        for i, (c, s) in enumerate(zip(str(guess), str(status))):
             match s:
-                case Status.CORRECT:
+                case Status.CORRECT.value:
                     words = [w for w in words if w[i] == c]
-                case Status.PRESENT:
+                case Status.PRESENT.value:
                     words = [w for w in words if c in w and w[i] != c]
-                case Status.MISSING:
+                case Status.MISSING.value:
                     # But, I use missing when there are present characters
                     # but too many of them
                     # So, if the letter is present or correct anywhere
                     # elsewhere skip this missing filter
-                    stats = [s for s, c_ in zip(status, guess) if c_ == c]
-                    if any(s != Status.MISSING for s in stats):
+                    stats = [s for s, c_ in zip(str(status), str(guess)) if c_ == c]
+                    if any(s != Status.MISSING.value for s in stats):
                         words = [w for w in words if c in w and w[i] != c]
                         continue
                     words = [w for w in words if c not in w]
     return words
 
 
-def present(aim: Guess, guess: Guess, guessc: str, i: int) -> Status:
+def present(aim: str, guess: str, guessc: str, i: int) -> Status:
     if i > 0:
         count_aimc = len([c for c in aim if c == guessc])
         count_stats = len([c for c in guess[:i] if c == guessc])
@@ -201,30 +266,33 @@ def present(aim: Guess, guess: Guess, guessc: str, i: int) -> Status:
 
 @functools.cache
 def evaluate(aim: Guess, guess: Guess) -> GuessStatus:
-    stats: list[Status] = []
-    for i, (aimc, guessc) in enumerate(zip(aim, guess)):
+    s = ""
+    for i, (aimc, guessc) in enumerate(zip(str(aim), str(guess))):
         if aimc == guessc:
-            stats.append(Status.CORRECT)
+            s += Status.CORRECT.value
         elif guessc in aim:
-            stats.append(present(aim=aim, guess=guess, guessc=guessc, i=i))
+            s += present(aim=str(aim), guess=str(guess), guessc=guessc, i=i).value
         else:
-            stats.append(Status.MISSING)
-    return tuple([stats[0], stats[1], stats[2], stats[3], stats[4]])
+            s += Status.MISSING.value
+    return GuessStatus(s)
 
 
-def main(words: Sequence[str], aim: str) -> None:
+def main(words: set[str], aim: str) -> None:
     if aim not in words:
         raise ValueError("Aim not in words, might struggle.")
 
     board = Board(
         words=words,
         moves=[],
-        statuses=tuple(),
+        statuses=[],
     )
 
     while True:
-        variation = minimax(board)
-        board = board.move(variation.moves[board.depth])
+        if board.moves:
+            variation = search.alphabeta(board, a=board.minimum(), b=board.maximum())
+            board = board.move(variation.moves[len(board.moves)])
+        else:
+            board = board.move(Guess(next(w for w in words)))
         status = evaluate(Guess(aim), board.moves[-1])
         board = board.move(status)
         print(board)
@@ -235,22 +303,23 @@ def main(words: Sequence[str], aim: str) -> None:
 
 
 if __name__ == "__main__":
-    with open("words-min.txt") as fh:
-        words = fh.read().split("\n")
-    # words = [
-    #     "abbot",
-    #     "scorn",
-    #     "today",
-    #     "rider",
-    #     "dizzy",
-    #     "crime",
-    #     "rakes",
-    #     "clear",
-    #     "leech",
-    #     "burnt",
-    #     "monic",
-    #     "motto",
-    #     "noose",
-    # ]
+    words = [
+        "abbot",
+        "scorn",
+        "today",
+        "rider",
+        "dizzy",
+        "crime",
+        "rakes",
+        "clear",
+        "leech",
+        "burnt",
+        "monic",
+        "motto",
+        "noose",
+        "maxim",
+    ]
+    # with open("words-min.txt") as fh:
+    #     words = fh.read().split("\n")
 
-    main(words, "maxim")
+    main(set(words), "maxim")

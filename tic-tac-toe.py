@@ -2,7 +2,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Iterator
 
-from minimax import minimax
+import search
 
 
 class IllegalMove(Exception):
@@ -130,7 +130,7 @@ def main() -> None:
         if board.is_terminal():
             print(board.score())
             break
-        variation = minimax(board)
+        variation = search.alphabeta(board, board.minimum(), board.maximum())
         board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():
