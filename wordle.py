@@ -22,11 +22,14 @@ class Guess:
             raise ValueError(f"Guess '{guess}' must be length {GUESS_LEN}.")
         self._guess = guess
 
-    def __iter__(self) -> Iterable[str]:
+    def __iter__(self) -> Iterator[str]:
         return iter(self._guess)
 
-    # def __getitem__(self, idx):
-    #    return self._guess[idx]
+    def __getitem__(self, idx):
+        return self._guess[idx]
+
+    def __hash__(self):
+        return hash(self._guess)
 
     def __str__(self) -> str:
         return self._guess
@@ -36,16 +39,20 @@ class Guess:
 
 
 class GuessStatus:
-    def __init__(self, status: str):
+    @classmethod
+    def from_string(cls, string: str) -> GuessStatus:
+        return cls([Status(s) for s in string])
+
+    def __init__(self, status: list[Status]):
         if len(status) != GUESS_LEN:
             raise ValueError(f"Status'{status}' must be length {GUESS_LEN}.")
-        self._status = [Status(s) for s in status]
+        self._status = status
 
-    def __iter__(self) -> Iterable[Status]:
+    def __iter__(self) -> Iterator[Status]:
         return iter(self._status)
 
-    # def __getitem__(self, idx):
-    #    return self._status[idx]
+    def __hash__(self):
+        return hash(tuple(self._status))
 
     def __str__(self) -> str:
         return "".join(s.value for s in self._status)
@@ -56,7 +63,7 @@ class GuessStatus:
         return self._status == other._status
 
 
-CORRECT_GUESS = GuessStatus("".join(s.value for s in [Status.CORRECT] * GUESS_LEN))
+CORRECT_GUESS = GuessStatus([Status.CORRECT] * GUESS_LEN)
 
 
 SCORES = {
@@ -82,7 +89,7 @@ class Board:
         depth: int = 0,
     ) -> Board:
         gs = [Guess(g) for g in moves]
-        ss = [GuessStatus(s) for s in statuses]
+        ss = [GuessStatus.from_string(s) for s in statuses]
         return Board(
             words=words,
             moves=gs,
@@ -178,7 +185,7 @@ class Board:
             return 100
         if not self.statuses:
             return 0
-        return sum(SCORES[Status(s)] for s in str(self.statuses[-1]))
+        return _score(self.statuses[-1])
 
     def is_terminal(self) -> bool:
         if self.is_min or self.is_max:
@@ -200,40 +207,7 @@ class Board:
                 yield self.move(evaluate(Guess(word), self.moves[-1]))
 
 
-def update_words(
-    words: Sequence[str],
-    guesses: list[Guess],
-    statuses: list[GuessStatus],
-) -> Sequence[str]:
-    if not guesses:
-        return words
-
-    for guess, status in zip(guesses, statuses):
-        if status == CORRECT_GUESS:
-            return [str(guess)]
-        else:
-            words = [w for w in words if w != str(guess)]
-
-        for i, (c, s) in enumerate(zip(str(guess), str(status))):
-            match s:
-                case Status.CORRECT.value:
-                    words = [w for w in words if w[i] == c]
-                case Status.PRESENT.value:
-                    words = [w for w in words if c in w and w[i] != c]
-                case Status.MISSING.value:
-                    # But, I use missing when there are present characters
-                    # but too many of them
-                    # So, if the letter is present or correct anywhere
-                    # elsewhere skip this missing filter
-                    stats = [s for s, c_ in zip(str(status), str(guess)) if c_ == c]
-                    if any(s != Status.MISSING.value for s in stats):
-                        words = [w for w in words if c in w and w[i] != c]
-                        continue
-                    words = [w for w in words if c not in w]
-    return words
-
-
-def present(aim: str, guess: str, guessc: str, i: int) -> Status:
+def present(aim: Guess, guess: Guess, guessc: str, i: int) -> Status:
     if i > 0:
         count_aimc = len([c for c in aim if c == guessc])
         count_stats = len([c for c in guess[:i] if c == guessc])
@@ -244,15 +218,20 @@ def present(aim: str, guess: str, guessc: str, i: int) -> Status:
 
 @functools.cache
 def evaluate(aim: Guess, guess: Guess) -> GuessStatus:
-    s = ""
-    for i, (aimc, guessc) in enumerate(zip(str(aim), str(guess))):
+    status = []
+    for i, (aimc, guessc) in enumerate(zip(aim, guess)):
         if aimc == guessc:
-            s += Status.CORRECT.value
+            status.append(Status.CORRECT)
         elif guessc in aim:
-            s += present(aim=str(aim), guess=str(guess), guessc=guessc, i=i).value
+            status.append(present(aim=aim, guess=guess, guessc=guessc, i=i))
         else:
-            s += Status.MISSING.value
-    return GuessStatus(s)
+            status.append(Status.MISSING)
+    return GuessStatus(status)
+
+
+@functools.cache
+def _score(gs: GuessStatus) -> int:
+    return sum(SCORES[s] for s in gs)
 
 
 def main(words: set[str], aim: str) -> None:
