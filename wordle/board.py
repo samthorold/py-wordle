@@ -4,7 +4,7 @@ from typing import Iterator, Sequence
 import search
 from wordle.models import CORRECT_GUESS, Guess, GuessStatus, Player
 from wordle.evaluate import evaluate, _score
-from wordle.prune import update_words
+from wordle.prune import prune
 
 HEURISTICS = ["sired", "about"]
 
@@ -119,7 +119,7 @@ class Board:
 
     def evaluate(self, aim: str) -> Board:
         statuses = self.statuses + [evaluate(aim, self.moves[-1].guess)]
-        words = update_words(words=self.words, guesses=self.moves, statuses=statuses)
+        words = prune(words=self.words, guesses=self.moves, statuses=statuses)
         return Board(
             words=words,
             moves=self.moves,
@@ -169,7 +169,7 @@ class Board:
         words = self.words
         if not is_max:
             words = words - set([str(self.moves[-1])])
-            words = update_words(
+            words = prune(
                 words=self.words,
                 guesses=self.moves,
                 statuses=self.statuses,

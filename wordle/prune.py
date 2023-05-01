@@ -1,12 +1,11 @@
 from wordle.models import CORRECT_GUESS, Guess, GuessStatus, Status
 
 
-def update_words(
+def prune(
     words: set[str],
     guesses: list[Guess],
     statuses: list[GuessStatus],
 ) -> set[str]:
-    # noop if either guesses or statuses is empty
     for guess, status in zip(guesses, statuses):
         guess_str = guess.guess
         if status == CORRECT_GUESS:
