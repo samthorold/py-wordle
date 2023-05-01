@@ -14,11 +14,8 @@ class Board:
         words: set[str],
         moves: Sequence[str],
         statuses: Sequence[str],
-        num_guesses: int,
-        guess_len: int,
         initial_guess: str,
         player: Player = Player.X,
-        depth: int = 0,
     ) -> Board:
         gs = [g for g in moves]
         ss = [GuessStatus.from_string(s) for s in statuses]
@@ -26,11 +23,8 @@ class Board:
             words=words,
             moves=gs,
             statuses=ss,
-            num_guesses=num_guesses,
-            guess_len=guess_len,
             initial_guess=initial_guess,
             player=player,
-            depth=depth,
         )
 
     def __init__(
@@ -38,11 +32,8 @@ class Board:
         words: set[str],
         moves: list[str],
         statuses: list[GuessStatus],
-        num_guesses: int,
-        guess_len: int,
         initial_guess: str,
         player: Player = Player.X,
-        depth: int = 0,
         is_min: bool = False,
         is_max: bool = False,
     ):
@@ -50,11 +41,8 @@ class Board:
         self.moves = moves
         self.statuses = statuses
         self.player = player
-        self.depth = depth
         self.is_min = is_min
         self.is_max = is_max
-        self.num_guesses = num_guesses
-        self.guess_len = guess_len
         self.initial_guess = initial_guess
 
     def __gt__(self, other: Board) -> bool:
@@ -76,7 +64,7 @@ class Board:
             if len(self.statuses) > i:
                 s += " " + "".join(s.value for s in self.statuses[i])
             else:
-                s += " " * (self.guess_len + 1)
+                s += " " * 7
             if i == (len(self.moves) - 1):
                 s += f"{len(self.words):>6}"
             s += "\n"
@@ -94,8 +82,6 @@ class Board:
             moves=[],
             statuses=[],
             is_min=True,
-            num_guesses=self.num_guesses,
-            guess_len=self.guess_len,
             initial_guess=self.initial_guess,
         )
 
@@ -105,8 +91,6 @@ class Board:
             moves=[],
             statuses=[],
             is_max=True,
-            num_guesses=self.num_guesses,
-            guess_len=self.guess_len,
             initial_guess=self.initial_guess,
         )
 
@@ -127,15 +111,13 @@ class Board:
             moves=self.moves,
             statuses=statuses,
             player=self.next_player(),
-            num_guesses=self.num_guesses,
-            guess_len=self.guess_len,
             initial_guess=self.initial_guess,
         )
 
     def is_terminal(self) -> bool:
         if self.is_min or self.is_max:
             return False
-        run_out_of_guesses = len(self.statuses) == self.num_guesses
+        run_out_of_guesses = len(self.statuses) == 6
         correct = any(s == CORRECT_GUESS for s in self.statuses)
         return run_out_of_guesses or correct
 
@@ -149,9 +131,6 @@ class Board:
             moves=self.moves + [move],
             statuses=self.statuses,
             player=self.next_player(),
-            depth=self.depth + 1,
-            num_guesses=self.num_guesses,
-            guess_len=self.guess_len,
             initial_guess=self.initial_guess,
         )
 

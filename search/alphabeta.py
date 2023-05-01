@@ -12,12 +12,12 @@ def alphabeta(node: Node, a: Node, b: Node, soft: bool = True) -> Node:
 
     for child in node.children():
         if node.is_maximising():
-            best_node = max(best_node, alphabeta(child, a, b))
+            best_node = max(best_node, alphabeta(node=child, a=a, b=b, soft=soft))
             a = max(a, best_node)
             if getattr(best_node, gt_op)(b):
                 break
         else:
-            best_node = min(best_node, alphabeta(child, a, b))
+            best_node = min(best_node, alphabeta(node=child, a=a, b=b, soft=soft))
             b = min(b, best_node)
             if getattr(best_node, lt_op)(a):
                 break

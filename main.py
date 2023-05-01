@@ -24,7 +24,7 @@ if __name__ == "__main__":
     results = []
     for i, word in enumerate(words):
         print(word)
-        board = wordle(set(words), word, initial_guess="crate")
+        board = wordle(set(words), word, initial_guess="crate", soft=True)
         # print(board)
         results.append(board.score())
         if i and not i % 25:

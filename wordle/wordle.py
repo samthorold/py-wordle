@@ -6,11 +6,8 @@ def wordle(
     words: set[str],
     aim: str,
     initial_guess: str,
-    settings: Settings | None = None,
+    soft: bool,
 ) -> Board:
-    if settings is None:
-        settings = Settings()
-
     if aim not in words:
         raise ValueError("Aim not in words, might struggle.")
 
@@ -18,13 +15,11 @@ def wordle(
         words=words,
         moves=[],
         statuses=[],
-        num_guesses=settings.num_guesses,
-        guess_len=settings.guess_len,
         initial_guess=initial_guess,
     )
 
     while True:
-        board = board.guess()
+        board = board.guess(soft)
         board = board.evaluate(aim)
         print(board)
         if board.is_terminal():
