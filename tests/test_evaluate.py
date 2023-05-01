@@ -1,17 +1,17 @@
 import pytest
 
-from main import Status, evaluate, _score, _Status
+from wordle import GuessStatus, evaluate, _score
 
 
 @pytest.mark.parametrize(
     "aim,guess,expected",
     (
-        ("troll", "twist", ("=", ".", ".", ".", ".")),
-        ("scorn", "abeng", (".", ".", ".", "-", ".")),
-        ("thump", "jetty", (".", ".", "-", ".", ".")),
+        ("troll", "twist", GuessStatus.from_string("=....")),
+        ("scorn", "abeng", GuessStatus.from_string("...-.")),
+        ("thump", "jetty", GuessStatus.from_string("..-..")),
     ),
 )
-def test_evaluate(aim: str, guess: str, expected: list[_Status]) -> None:
+def test_evaluate(aim: str, guess: str, expected: GuessStatus) -> None:
     got = evaluate(aim=aim, guess=guess)
     assert got == expected
 
@@ -19,13 +19,13 @@ def test_evaluate(aim: str, guess: str, expected: list[_Status]) -> None:
 @pytest.mark.parametrize(
     "status,expected",
     (
-        ((".", ".", ".", ".", "."), 0),
-        ((".", ".", "-", ".", "."), 1),
-        ((".", ".", ".", ".", "-"), 1),
-        ((".", "=", ".", ".", "."), 3),
-        (("-", ".", ".", "=", "."), 4),
+        (GuessStatus.from_string("....."), 0),
+        (GuessStatus.from_string("..-.."), 1),
+        (GuessStatus.from_string("....-"), 1),
+        (GuessStatus.from_string(".=..-"), 3),
+        (GuessStatus.from_string("====="), 10),
     ),
 )
-def test_score(status: Status, expected: int) -> None:
-    got = _score(status)
+def test_score(status: GuessStatus, expected: int) -> None:
+    got = _score(tuple(status.status))
     assert got == expected

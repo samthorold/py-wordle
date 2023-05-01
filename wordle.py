@@ -224,9 +224,10 @@ class Board:
                 guesses=self.moves,
                 statuses=self.statuses,
             )
-            words = sorted(words, key=lambda w: -len(set(w)))
+            # words = sorted(words, key=lambda w: -len(set(w)))
         else:
-            words = sorted(words, key=lambda w: len(set(w)))
+            # words = sorted(words, key=lambda w: len(set(w)))
+            pass
         for word in words:
             if is_max:
                 yield self.move(move=Guess(word), words=set(words))
@@ -252,6 +253,7 @@ class Board:
             and djins in self.words
         ):
             return Guess(djins)
+        return None  # mypy appeasement
 
     def guess(self) -> Board:
         maybe_move = self.heuristic()

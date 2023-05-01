@@ -1,0 +1,10 @@
+[flake8]
+ignore =
+    # ambiguous var name
+    E741
+    # line length handled by black
+    E501
+    # line break before binary op handled by black
+    W503
+    # raise NotImplementedError contradicts standard lib suggestion
+    F901
