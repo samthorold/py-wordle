@@ -6,8 +6,6 @@ from wordle.models import CORRECT_GUESS, GuessStatus, Player
 from wordle.evaluate import evaluate, _score
 from wordle.prune import prune
 
-HEURISTICS = ["sired", "about"]
-
 
 class Board:
     @classmethod
@@ -18,6 +16,7 @@ class Board:
         statuses: Sequence[str],
         num_guesses: int,
         guess_len: int,
+        initial_guess: str,
         player: Player = Player.X,
         depth: int = 0,
     ) -> Board:
@@ -29,6 +28,7 @@ class Board:
             statuses=ss,
             num_guesses=num_guesses,
             guess_len=guess_len,
+            initial_guess=initial_guess,
             player=player,
             depth=depth,
         )
@@ -40,11 +40,11 @@ class Board:
         statuses: list[GuessStatus],
         num_guesses: int,
         guess_len: int,
+        initial_guess: str,
         player: Player = Player.X,
         depth: int = 0,
         is_min: bool = False,
         is_max: bool = False,
-        heuristics: list[str] | None = None,
     ):
         self.words = words
         self.moves = moves
@@ -55,7 +55,7 @@ class Board:
         self.is_max = is_max
         self.num_guesses = num_guesses
         self.guess_len = guess_len
-        self.heuristics = HEURISTICS if heuristics is None else heuristics
+        self.initial_guess = initial_guess
 
     def __gt__(self, other: Board) -> bool:
         return self.score() > other.score()
@@ -96,6 +96,7 @@ class Board:
             is_min=True,
             num_guesses=self.num_guesses,
             guess_len=self.guess_len,
+            initial_guess=self.initial_guess,
         )
 
     def maximum(self) -> Board:
@@ -106,6 +107,7 @@ class Board:
             is_max=True,
             num_guesses=self.num_guesses,
             guess_len=self.guess_len,
+            initial_guess=self.initial_guess,
         )
 
     def score(self) -> int:
@@ -127,6 +129,7 @@ class Board:
             player=self.next_player(),
             num_guesses=self.num_guesses,
             guess_len=self.guess_len,
+            initial_guess=self.initial_guess,
         )
 
     def is_terminal(self) -> bool:
@@ -136,26 +139,20 @@ class Board:
         correct = any(s == CORRECT_GUESS for s in self.statuses)
         return run_out_of_guesses or correct
 
-    def move(self, move: str | GuessStatus, words: set[str]) -> Board:
+    def move(self, move: str) -> Board:
         words = self.words
-        if isinstance(move, str):
-            if move not in self.words:
-                raise ValueError(f"Guess '{move}' not in words, might struggle.")
-            moves = self.moves + [move]
-            statuses = self.statuses
-        else:
-            moves = [m for m in self.moves]
-            statuses = self.statuses + [move]
+        if move not in self.words:
+            raise ValueError(f"Guess '{move}' not in words, might struggle.")
 
         new_board = Board(
             words=words,
-            moves=moves,
-            statuses=statuses,
+            moves=self.moves + [move],
+            statuses=self.statuses,
             player=self.next_player(),
             depth=self.depth + 1,
-            heuristics=self.heuristics,
             num_guesses=self.num_guesses,
             guess_len=self.guess_len,
+            initial_guess=self.initial_guess,
         )
 
         return new_board
@@ -164,36 +161,21 @@ class Board:
         if self.is_terminal():
             return
         is_max = self.is_maximising()
-        words = self.words
-        if not is_max:
-            words = words - set([str(self.moves[-1])])
-            words = prune(
-                words=self.words,
-                guesses=self.moves,
-                statuses=self.statuses,
-            )
-        for word in words:
+        for word in self.words:
             if is_max:
-                yield self.move(move=word, words=set(words))
+                yield self.move(move=word)
             else:
-                yield self.move(
-                    move=evaluate(word, self.moves[-1]),
-                    words=set(words),
-                )
+                yield self.evaluate(aim=word)
 
     def heuristic(self) -> str | None:
-        if not self.heuristics:
-            return None
-        for h in self.heuristics:
-            if h in self.words:
-                return h
+        if not self.moves:
+            return "crate"
         return None
 
     def guess(self, soft: bool = True) -> Board:
         maybe_move = self.heuristic()
-        if maybe_move:
+        if maybe_move := self.heuristic():
             move = maybe_move
-            self.heuristics.remove(maybe_move)
         else:
             variation = search.alphabeta(
                 self,
@@ -202,4 +184,4 @@ class Board:
                 soft=soft,
             )
             move = variation.moves[len(self.moves)]
-        return self.move(move, self.words)
+        return self.move(move)
