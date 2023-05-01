@@ -20,12 +20,12 @@ if __name__ == "__main__":
     ]
     with open("words/words-tiny.txt") as fh:
         words = fh.read().split("\n")
-
-    results = []
-    for i, word in enumerate(words):
-        print(word)
-        board = wordle(set(words), word, initial_guess="crate", soft=True)
-        # print(board)
-        results.append(board.score())
-        if i and not i % 25:
-            print(len([r for r in results if r == 10]), len(results))
+    board = wordle(set(words), "allay", initial_guess="crate", soft=True)
+    # results = []
+    # for i, word in enumerate(words):
+    #     print(word)
+    #     board = wordle(set(words), word, initial_guess="crate", soft=True)
+    #     # print(board)
+    #     results.append(board.score())
+    #     if i and not i % 25:
+    #         print(len([r for r in results if r == 10]), len(results))
