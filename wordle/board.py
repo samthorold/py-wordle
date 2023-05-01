@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Iterator, Sequence
 
 import search
-from wordle.models import CORRECT_GUESS, Guess, GuessStatus, Player
+from wordle.models import CORRECT_GUESS, GuessStatus, Player
 from wordle.evaluate import evaluate, _score
 from wordle.prune import prune
 
@@ -21,7 +21,7 @@ class Board:
         player: Player = Player.X,
         depth: int = 0,
     ) -> Board:
-        gs = [Guess(g) for g in moves]
+        gs = [g for g in moves]
         ss = [GuessStatus.from_string(s) for s in statuses]
         return Board(
             words=words,
@@ -36,7 +36,7 @@ class Board:
     def __init__(
         self,
         words: set[str],
-        moves: list[Guess],
+        moves: list[str],
         statuses: list[GuessStatus],
         num_guesses: int,
         guess_len: int,
@@ -118,7 +118,7 @@ class Board:
         return _score(tuple(self.statuses[-1].status))
 
     def evaluate(self, aim: str) -> Board:
-        statuses = self.statuses + [evaluate(aim, self.moves[-1].guess)]
+        statuses = self.statuses + [evaluate(aim, self.moves[-1])]
         words = prune(words=self.words, guesses=self.moves, statuses=statuses)
         return Board(
             words=words,
@@ -136,13 +136,11 @@ class Board:
         correct = any(s == CORRECT_GUESS for s in self.statuses)
         return run_out_of_guesses or correct
 
-    def move(self, move: Guess | GuessStatus, words: set[str]) -> Board:
+    def move(self, move: str | GuessStatus, words: set[str]) -> Board:
         words = self.words
-        if isinstance(move, Guess):
-            if move.guess not in self.words:
-                raise ValueError(
-                    f"Guess '{move.guess}' not in words, might struggle."
-                )
+        if isinstance(move, str):
+            if move not in self.words:
+                raise ValueError(f"Guess '{move}' not in words, might struggle.")
             moves = self.moves + [move]
             statuses = self.statuses
         else:
@@ -176,10 +174,10 @@ class Board:
             )
         for word in words:
             if is_max:
-                yield self.move(move=Guess(word), words=set(words))
+                yield self.move(move=word, words=set(words))
             else:
                 yield self.move(
-                    move=evaluate(Guess(word).guess, self.moves[-1].guess),
+                    move=evaluate(word, self.moves[-1]),
                     words=set(words),
                 )
 
@@ -194,7 +192,7 @@ class Board:
     def guess(self, soft: bool = True) -> Board:
         maybe_move = self.heuristic()
         if maybe_move:
-            move = Guess(maybe_move)
+            move = maybe_move
             self.heuristics.remove(maybe_move)
         else:
             variation = search.alphabeta(
