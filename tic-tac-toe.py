@@ -128,16 +128,27 @@ class Board:
 
 
 def main() -> None:
+    soft = False
     board = Board.from_string("." * 9, Player.O)
     while True:
         # r, c = [int(m) for m in input("Move: ")]
-        variation = search.minimax(board)  # , board.minimum(), board.maximum())
+        variation = search.alphabeta(
+            node=board,
+            a=board.minimum(),
+            b=board.maximum(),
+            soft=soft,
+        )
         board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():
             print(board.score())
             break
-        variation = search.alphabeta(board, board.minimum(), board.maximum())
+        variation = search.alphabeta(
+            node=board,
+            a=board.minimum(),
+            b=board.maximum(),
+            soft=soft,
+        )
         board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():

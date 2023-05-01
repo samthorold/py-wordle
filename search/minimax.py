@@ -2,7 +2,6 @@ from search.node import Node
 
 
 def minimax(node: Node) -> Node:
-    # breakpoint()
     if node.is_terminal():
         return node
 

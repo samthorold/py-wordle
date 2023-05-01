@@ -62,7 +62,8 @@ class GuessStatus:
         return self.status == other.status
 
 
-CORRECT_GUESS = GuessStatus([Status.CORRECT] * GUESS_LEN)
+CORRECT_GUESS = GuessStatus.from_string("=====")
+TOTALLY_WRONG_GUESS = GuessStatus.from_string(".....")
 
 
 SCORES = {
@@ -107,8 +108,6 @@ class Board:
         is_min: bool = False,
         is_max: bool = False,
     ):
-        if statuses and len(statuses) == len(moves):
-            words = update_words(words, guesses=moves, statuses=statuses)
         self.words = words
         self.moves = moves
         self.statuses = statuses
@@ -129,8 +128,24 @@ class Board:
     def __le__(self, other: Board) -> bool:
         return self.score() <= other.score()
 
+    def __str__(self) -> str:
+        s = ""
+        for i, guess in enumerate(self.moves):
+            s += str(guess)
+            if len(self.statuses) > i:
+                s += " " + "".join(s.value for s in self.statuses[i])
+            else:
+                s += " " * (GUESS_LEN + 1)
+            if i == (len(self.moves) - 1):
+                s += f"{len(self.words):>6}"
+            s += "\n"
+        return s
+
     def is_maximising(self) -> bool:
         return self.player == Player.X
+
+    def next_player(self) -> Player:
+        return Player.X if self.player == Player.O else Player.O
 
     def minimum(self) -> Board:
         return Board(
@@ -148,16 +163,34 @@ class Board:
             is_max=True,
         )
 
-    def __str__(self) -> str:
-        s = ""
-        for i in range(NUM_GUESSES):
-            if len(self.moves) > i:
-                s += self.moves[i].guess
-            if len(self.statuses) > i:
-                s += " " + "".join(s.value for s in self.statuses[i]) + "\n"
-        return s
+    def score(self) -> int:
+        if self.is_min:
+            return -100
+        if self.is_max:
+            return 100
+        if not self.statuses:
+            return 0
+        return _score(tuple(self.statuses[-1].status))
 
-    def move(self, move: Guess | GuessStatus) -> Board:
+    def evaluate(self, aim: str) -> Board:
+        statuses = self.statuses + [evaluate(aim, self.moves[-1].guess)]
+        words = update_words(words=self.words, guesses=self.moves, statuses=statuses)
+        return Board(
+            words=words,
+            moves=self.moves,
+            statuses=statuses,
+            player=self.next_player(),
+        )
+
+    def is_terminal(self) -> bool:
+        if self.is_min or self.is_max:
+            return False
+        run_out_of_guesses = len(self.statuses) == NUM_GUESSES
+        correct = any(s == CORRECT_GUESS for s in self.statuses)
+        return run_out_of_guesses or correct
+
+    def move(self, move: Guess | GuessStatus, words: set[str]) -> Board:
+        words = self.words
         if isinstance(move, Guess):
             if move.guess not in self.words:
                 raise ValueError(
@@ -169,11 +202,6 @@ class Board:
             moves = [m for m in self.moves]
             statuses = self.statuses + [move]
 
-        if (not self.is_maximising()) and self.moves:
-            words = self.words - set([str(self.moves[-1])])
-        else:
-            words = self.words
-
         new_board = Board(
             words=words,
             moves=moves,
@@ -184,45 +212,55 @@ class Board:
 
         return new_board
 
-    def score(self) -> int:
-        if self.is_min:
-            return -100
-        if self.is_max:
-            return 100
-        if not self.statuses:
-            return 0
-        return _score(tuple(self.statuses[-1].status))
-
-    def is_terminal(self) -> bool:
-        if self.is_min or self.is_max:
-            return False
-        run_out_of_guesses = len(self.statuses) == NUM_GUESSES
-        correct = any(s == CORRECT_GUESS for s in self.statuses)
-        return run_out_of_guesses or correct
-
-    def next_player(self) -> Player:
-        return Player.X if self.player == Player.O else Player.O
-
     def children(self) -> Iterator[Board]:
         if self.is_terminal():
             return
-        words = sorted(self.words, key=lambda w: -len(set(w)))
+        is_max = self.is_maximising()
+        words = self.words
+        if not is_max:
+            words = words - set([str(self.moves[-1])])
+            words = update_words(
+                words=self.words,
+                guesses=self.moves,
+                statuses=self.statuses,
+            )
+            words = sorted(words, key=lambda w: -len(set(w)))
+        else:
+            words = sorted(words, key=lambda w: len(set(w)))
         for word in words:
-            if self.is_maximising():
-                yield self.move(Guess(word))
+            if is_max:
+                yield self.move(move=Guess(word), words=set(words))
             else:
-                yield self.move(evaluate(Guess(word).guess, self.moves[-1].guess))
+                yield self.move(
+                    move=evaluate(Guess(word).guess, self.moves[-1].guess),
+                    words=set(words),
+                )
 
-    def heuristic(self) -> Guess:
-        if not self.moves and "crate" in self.words:
-            return Guess("crate")
-        # if len(self.moves) == 1 and self.statuses and self.statuses[-1]
-        children = list(self.children())
-        ch = children[0]
-        for c in children[1:]:
-            if c.score() < ch.score():
-                ch = c
-        return ch.moves[-1]
+    def heuristic(self) -> Guess | None:
+        crate, mogul, djins = "crate", "mogul", "djins"
+        if not self.moves and crate in self.words:
+            return Guess(crate)
+        if (
+            len(self.statuses) == 1
+            and self.statuses[-1] == TOTALLY_WRONG_GUESS
+            and mogul in self.words
+        ):
+            return Guess(mogul)
+        if (
+            len(self.statuses) == 2
+            and self.statuses[-1] == TOTALLY_WRONG_GUESS
+            and djins in self.words
+        ):
+            return Guess(djins)
+
+    def guess(self) -> Board:
+        maybe_move = self.heuristic()
+        if maybe_move:
+            move = maybe_move
+        else:
+            variation = search.alphabeta(self, a=self.minimum(), b=self.maximum())
+            move = variation.moves[len(self.moves)]
+        return self.move(move, self.words)
 
 
 def present(aim: str, guess: str, guessc: str, i: int) -> Status:
@@ -295,14 +333,9 @@ def main(words: set[str], aim: str) -> Board:
     )
 
     while True:
-        if (not board.moves) or (len(board.words) > 50):
-            move = board.heuristic()
-            board = board.move(move)
-        else:
-            variation = search.alphabeta(board, a=board.minimum(), b=board.maximum())
-            board = board.move(variation.moves[len(board.moves)])
-        status = evaluate(aim, board.moves[-1].guess)
-        board = board.move(status)
+        board = board.guess()
+        board = board.evaluate(aim)
+        print(board)
         if board.is_terminal():
             break
     return board
@@ -328,7 +361,7 @@ if __name__ == "__main__":
     with open("words-tiny.txt") as fh:
         words = fh.read().split("\n")
 
-    board = main(set(words), "swing")
+    board = main(set(words), "fizzy")
     print(board)
 
     # results = []
