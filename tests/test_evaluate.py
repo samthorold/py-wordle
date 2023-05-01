@@ -1,18 +1,17 @@
 import pytest
 
-from wordle.models import GuessStatus
 from wordle.evaluate import evaluate, _score
 
 
 @pytest.mark.parametrize(
     "aim,guess,expected",
     (
-        ("troll", "twist", GuessStatus.from_string("=....")),
-        ("scorn", "abeng", GuessStatus.from_string("...-.")),
-        ("thump", "jetty", GuessStatus.from_string("..-..")),
+        ("troll", "twist", "=...."),
+        ("scorn", "abeng", "...-."),
+        ("thump", "jetty", "..-.."),
     ),
 )
-def test_evaluate(aim: str, guess: str, expected: GuessStatus) -> None:
+def test_evaluate(aim: str, guess: str, expected: str) -> None:
     got = evaluate(aim=aim, guess=guess)
     assert got == expected
 
@@ -20,13 +19,13 @@ def test_evaluate(aim: str, guess: str, expected: GuessStatus) -> None:
 @pytest.mark.parametrize(
     "status,expected",
     (
-        (GuessStatus.from_string("....."), 0),
-        (GuessStatus.from_string("..-.."), 1),
-        (GuessStatus.from_string("....-"), 1),
-        (GuessStatus.from_string(".=..-"), 3),
-        (GuessStatus.from_string("====="), 10),
+        (".....", 0),
+        ("..-..", 1),
+        ("....-", 1),
+        (".=..-", 3),
+        ("=====", 10),
     ),
 )
-def test_score(status: GuessStatus, expected: int) -> None:
-    got = _score(tuple(status.status))
+def test_score(status: str, expected: int) -> None:
+    got = _score(status)
     assert got == expected

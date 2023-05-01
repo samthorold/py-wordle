@@ -1,37 +1,26 @@
 from __future__ import annotations
-from typing import Iterator, Sequence
+from enum import Enum
+from typing import Iterator
 
 import search
-from wordle.models import CORRECT_GUESS, GuessStatus, Player
 from wordle.evaluate import evaluate, _score
-from wordle.prune import prune
+from wordle.prune import prune, CORRECT_GUESS
+
+
+
+
+
+class Player(Enum):
+    X = "x"
+    O = "o"
 
 
 class Board:
-    @classmethod
-    def from_string(
-        cls,
-        words: set[str],
-        moves: Sequence[str],
-        statuses: Sequence[str],
-        initial_guess: str,
-        player: Player = Player.X,
-    ) -> Board:
-        gs = [g for g in moves]
-        ss = [GuessStatus.from_string(s) for s in statuses]
-        return Board(
-            words=words,
-            moves=gs,
-            statuses=ss,
-            initial_guess=initial_guess,
-            player=player,
-        )
-
     def __init__(
         self,
-        words: set[str],
+        words: list[str],
         moves: list[str],
-        statuses: list[GuessStatus],
+        statuses: list[str],
         initial_guess: str,
         player: Player = Player.X,
         is_min: bool = False,
@@ -60,9 +49,9 @@ class Board:
     def __str__(self) -> str:
         s = ""
         for i, guess in enumerate(self.moves):
-            s += str(guess)
+            s += guess
             if len(self.statuses) > i:
-                s += " " + "".join(s.value for s in self.statuses[i])
+                s += " " + self.statuses[i]
             else:
                 s += " " * 7
             if i == (len(self.moves) - 1):
@@ -78,7 +67,7 @@ class Board:
 
     def minimum(self) -> Board:
         return Board(
-            words=set(),
+            words=[],
             moves=[],
             statuses=[],
             is_min=True,
@@ -87,7 +76,7 @@ class Board:
 
     def maximum(self) -> Board:
         return Board(
-            words=set(),
+            words=[],
             moves=[],
             statuses=[],
             is_max=True,
@@ -101,11 +90,12 @@ class Board:
             return 100
         if not self.statuses:
             return 0
-        return _score(tuple(self.statuses[-1].status))
+        return _score(self.statuses[-1])
 
     def evaluate(self, aim: str) -> Board:
         statuses = self.statuses + [evaluate(aim, self.moves[-1])]
         words = prune(words=self.words, guesses=self.moves, statuses=statuses)
+        words = sorted(words, key=lambda w: -len(set(w)))
         return Board(
             words=words,
             moves=self.moves,
@@ -125,7 +115,7 @@ class Board:
         words = self.words
         if move not in self.words:
             raise ValueError(f"Guess '{move}' not in words, might struggle.")
-
+        # words = sorted(words, key=lambda w: len(set(w)))
         new_board = Board(
             words=words,
             moves=self.moves + [move],
@@ -149,6 +139,13 @@ class Board:
     def heuristic(self) -> str | None:
         if not self.moves:
             return "crate"
+        if len(self.statuses) == 1:
+            if self.statuses[-1] == ".....":
+                return "bingo"
+            if self.statuses[-1] == "-....":
+                return "block"
+            if self.statuses[-1] == "....-":
+                return "begin"
         return None
 
     def guess(self, soft: bool = True) -> Board:

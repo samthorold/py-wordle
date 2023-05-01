@@ -1,9 +1,8 @@
 from wordle.board import Board
-from wordle.settings import Settings
 
 
 def wordle(
-    words: set[str],
+    words: list[str],
     aim: str,
     initial_guess: str,
     soft: bool,

@@ -1,6 +1,5 @@
 import pytest
 
-from wordle.models import GuessStatus
 from wordle.prune import prune
 
 
@@ -24,12 +23,12 @@ WORDS = [
 
 
 def test_prune_correct_guess() -> None:
-    words = set(WORDS)
+    words = WORDS
     guesses = [
         "motto",
     ]
-    statuses = [GuessStatus.from_string("=====")]
-    expected = set(["motto"])
+    statuses = ["====="]
+    expected = ["motto"]
 
     got = prune(words=words, guesses=guesses, statuses=statuses)
     assert got == expected
@@ -43,11 +42,11 @@ def test_prune_correct_guess() -> None:
     ),
 )
 def test_prune_single(guess: str, status: str, expected: list[str]) -> None:
-    words = set(WORDS)
+    words = WORDS
     guesses = [
         guess,
     ]
-    statuses = [GuessStatus.from_string(status)]
+    statuses = [status]
 
     got = prune(words=words, guesses=guesses, statuses=statuses)
-    assert got == set(expected)
+    assert got == expected
