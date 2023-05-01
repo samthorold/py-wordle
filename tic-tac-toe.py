@@ -137,7 +137,7 @@ def main() -> None:
         if board.is_terminal():
             print(board.score())
             break
-        variation = search.minimax(board)  # , board.minimum(), board.maximum())
+        variation = search.alphabeta(board, board.minimum(), board.maximum())
         board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():

@@ -1,4 +1,4 @@
-from search.minimax import Node
+from search.node import Node
 
 
 def alphabeta(node: Node, a: Node, b: Node) -> Node:
