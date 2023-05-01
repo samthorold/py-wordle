@@ -7,16 +7,16 @@ class Node(Protocol):
     moves: list[Any]
 
     def __gt__(self, other: Self) -> bool:
-        return self.score() > other.score()
+        ...
 
     def __lt__(self, other: Self) -> bool:
-        return self.score() < other.score()
+        ...
 
     def __ge__(self, other: Self) -> bool:
-        return self.score() > +other.score()
+        ...
 
     def __le__(self, other: Self) -> bool:
-        return self.score() < +other.score()
+        ...
 
     def score(self) -> int:
         ...
