@@ -1,6 +1,7 @@
 import pytest
 
-from wordle import GuessStatus, evaluate, _score
+from wordle.models import GuessStatus
+from wordle.evaluate import evaluate, _score
 
 
 @pytest.mark.parametrize(
