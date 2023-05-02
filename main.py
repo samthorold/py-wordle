@@ -22,7 +22,7 @@ if __name__ == "__main__":
         words = fh.read().split("\n")
     # board = wordle(words, "allay", initial_guess="crate", soft=True)
     results = []
-    for i, word in enumerate(words):
+    for i, word in enumerate(reversed(words)):
         print(word)
         board = wordle(words, word, initial_guess="crate", soft=True)
         # print(board)

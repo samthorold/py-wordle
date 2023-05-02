@@ -139,6 +139,9 @@ class Board:
     def heuristic(self) -> str | None:
         if not self.moves:
             return "crate"
+        # based on what's seen as the next guess
+        # using the "tiny" word list of ~ 2.3k
+        # and soft alpha-beta pruning
         if len(self.statuses) == 1:
             if self.statuses[-1] == ".....":
                 return "bingo"
