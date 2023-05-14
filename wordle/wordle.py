@@ -20,7 +20,7 @@ def wordle(
     while True:
         board = board.guess(soft)
         board = board.evaluate(aim)
-        print(board)
+        # print(board)
         if board.is_terminal():
             break
     return board

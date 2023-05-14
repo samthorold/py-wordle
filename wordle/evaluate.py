@@ -4,7 +4,7 @@ import functools
 SCORES = {
     ".": 0,
     "-": 1,
-    "=": 2,
+    "=": 6,
 }
 
 

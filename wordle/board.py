@@ -7,9 +7,6 @@ from wordle.evaluate import evaluate, _score
 from wordle.prune import prune, CORRECT_GUESS
 
 
-
-
-
 class Player(Enum):
     X = "x"
     O = "o"
@@ -112,12 +109,12 @@ class Board:
         return run_out_of_guesses or correct
 
     def move(self, move: str) -> Board:
-        words = self.words
+        # words = self.words
         if move not in self.words:
             raise ValueError(f"Guess '{move}' not in words, might struggle.")
         # words = sorted(words, key=lambda w: len(set(w)))
         new_board = Board(
-            words=words,
+            words=self.words,
             moves=self.moves + [move],
             statuses=self.statuses,
             player=self.next_player(),
@@ -152,7 +149,7 @@ class Board:
         return None
 
     def guess(self, soft: bool = True) -> Board:
-        maybe_move = self.heuristic()
+        # maybe_move = self.heuristic()
         if maybe_move := self.heuristic():
             move = maybe_move
         else:

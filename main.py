@@ -18,14 +18,14 @@ if __name__ == "__main__":
         "maxim",
         "crate",
     ]
-    with open("words/words-tiny.txt") as fh:
+    with open("words/words.txt") as fh:
         words = fh.read().split("\n")
     # board = wordle(words, "allay", initial_guess="crate", soft=True)
     results = []
     for i, word in enumerate(reversed(words)):
         print(word)
         board = wordle(words, word, initial_guess="crate", soft=True)
-        # print(board)
+        print(board)
         results.append(board.score())
         if i and not i % 25:
             print(len([r for r in results if r == 10]), len(results))
