@@ -12,11 +12,12 @@
 >>> wdl.is_terminal()
 True
 """
+import functools
 import os
 import random
 from typing import Protocol
 
-import functools
+from search.alphabeta import alphabeta
 
 
 @functools.cache
@@ -69,6 +70,14 @@ class UserGuesser:
                 print("Guess not a known word.")
                 continue
             return guess
+
+
+class WordleNode:
+    ...
+
+
+class AlphaBetaGuesser:
+    ...
 
 
 class Wordle:
