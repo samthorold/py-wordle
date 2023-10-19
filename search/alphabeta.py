@@ -1,8 +1,18 @@
+import logging
+
 from search.node import Node
 
 
+logger = logging.getLogger(__name__)
+
+
 def alphabeta(node: Node, a: Node, b: Node, soft: bool = True) -> Node:
+    logger.debug("got node=%s a=%s b=%s", node.moves, a.moves, b.moves)
+    if node.is_maximising():
+        logger.debug("got node=%s a=%s b=%s", node.score(), a.score(), b.score())
     if node.is_terminal():
+        logger.debug("terminal")
+        logger.debug("returned node=%s a=%s b=%s", node.moves, a.moves, b.moves)
         return node
 
     gt_op = "__ge__" if soft else "__gt__"
@@ -21,5 +31,7 @@ def alphabeta(node: Node, a: Node, b: Node, soft: bool = True) -> Node:
             b = min(b, best_node)
             if getattr(best_node, lt_op)(a):
                 break
+
+    logger.debug("returned node=%s a=%s b=%s", node.moves, a.moves, b.moves)
 
     return best_node
