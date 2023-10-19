@@ -12,10 +12,11 @@
 >>> wdl.is_terminal()
 True
 """
+from __future__ import annotations
 import functools
 import os
 import random
-from typing import Protocol
+from typing import Iterable, Protocol, Self
 
 from search.alphabeta import alphabeta
 
@@ -41,6 +42,57 @@ def evaluate(aim: str, guess: str) -> str:
         else:
             status += "."
     return status
+
+
+@functools.cache
+def score(sc: str) -> int:
+    scores = {".": 0, "-": 1, "=": 2}
+    return sum(scores[s] for s in sc)
+
+
+CORRECT_GUESS = "====="
+
+
+def prune_correct(words: list[str], i: int, c: str) -> list[str]:
+    return [w for w in words if w[i] == c]
+
+
+def prune_present(words: list[str], i: int, c: str) -> list[str]:
+    return [w for w in words if c in w and w[i] != c]
+
+
+def prune_missing(
+    words: list[str], i: int, c: str, status: str, guess: str
+) -> list[str]:
+    # Character with missing may be present elsewhere in the word
+    # return [w for w in words if w[i] != c]
+    if [s for s, c_ in zip(status, guess) if c_ == c and s != "."]:
+        return [w for w in words if c in w and w[i] != c]
+    return [w for w in words if c not in w]
+
+
+def prune(
+    words: list[str],
+    guesses: list[str],
+    statuses: list[str],
+) -> list[str]:
+    for guess, status in zip(guesses, statuses):
+        if status == CORRECT_GUESS:
+            return [guess]
+        else:
+            words = [w for w in words if w != guess]
+
+        for i, (c, s) in enumerate(zip(guess, status)):
+            match s:
+                case "=":
+                    words = prune_correct(words, i, c)
+                case "-":
+                    words = prune_present(words, i, c)
+                case ".":
+                    words = prune_missing(words, i, c, status, guess)
+                case _:
+                    raise ValueError(f"Unkown evaluation.")
+    return words
 
 
 class Guesser(Protocol):
@@ -73,7 +125,75 @@ class UserGuesser:
 
 
 class WordleNode:
-    ...
+    """Node in a Wordle game.
+
+    The maximising player chooses the highest scoring allowed word.
+    The minimising player chooses the lowest score that guess could have attained,
+    given the allowed words.
+
+    """
+
+    def __init__(
+        self,
+        guess: str,
+        score: str,
+        vocabulary: list[str],
+        depth: int = 1,
+    ) -> None:
+        self._guess = guess
+        self._score = score
+        self.vocabulary = vocabulary
+        self.depth = depth
+
+    def __lt__(self, other: Self) -> bool:
+        return self.score() < other.score()
+
+    def __le__(self, other: Self) -> bool:
+        return self.score() <= other.score()
+
+    def __gt__(self, other: Self) -> bool:
+        return self.score() > other.score()
+
+    def __ge__(self, other: Self) -> bool:
+        return self.score() >= other.score()
+
+    def score(self) -> int:
+        if self.is_maximising():
+            # And this is the crux
+            # What is the score for a guess before knowing the
+            # minimising player's turn
+            return 0
+        return score(self._score)
+
+    def is_maximising(self) -> bool:
+        return bool(self.depth % 2)
+
+    def is_terminal(self) -> bool:
+        return self.depth == 12
+
+    def children(self) -> Iterable[Self]:
+        if self.is_maximising():
+            # Must know the actual score for the last guess
+            # Can prune the allowed word list
+            self.prune()
+            for guess in self.vocabulary:
+                yield WordleNode(
+                    guess=guess,
+                    score="",
+                    vocabulary=[w for w in self.vocabulary],
+                    depth=self.depth + 1,
+                )
+        else:
+            for guess in self.vocabulary:
+                yield WordleNode(
+                    guess=self._guess,
+                    score=evaluate(guess=self._guess, aim=guess),
+                    vocabulary=[w for w in vocabulary],
+                    depth=self.depth + 1,
+                )
+
+    def prune(self) -> None:
+        ...
 
 
 class AlphaBetaGuesser:
@@ -122,7 +242,7 @@ class Wordle:
         self.guess_next = not self.guess_next
 
     def is_terminal(self) -> bool:
-        correct_guess = any(s == "=====" for s in self.scores)
+        correct_guess = any(s == CORRECT_GUESS for s in self.scores)
         no_more_guesses = len(self.scores) == 6
         return correct_guess or no_more_guesses
 
