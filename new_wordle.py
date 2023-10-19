@@ -187,7 +187,9 @@ class WordleNode:
         # minimising player's turn
         # Returning the same score for all would _run_
         # but maybe only with soft alphabeta
-        return 0
+        if self.depth > 4:
+            return 0
+        return len(set(self.moves[-1]))
 
     def is_maximising(self) -> bool:
         return bool(self.depth % 2)
@@ -315,7 +317,7 @@ def main(
     truth: str,
     vocabulary: list[str],
     guesser: Guesser,
-) -> None:
+) -> int:
     wordle = Wordle(
         guesser=guesser,
         scorer=Scorer(truth=truth),
@@ -328,6 +330,7 @@ def main(
         print("---")
         if wordle.is_terminal():
             break
+    return score_evaluation(wordle.scores[-1])
 
 
 class WordleArgs:
