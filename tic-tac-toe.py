@@ -21,7 +21,7 @@ class Board:
     @classmethod
     def from_string(
         cls,
-        string: str,
+        string: str | None,
         player: Player = Player.X,
         depth: int = 0,
     ) -> Board:
@@ -128,10 +128,11 @@ class Board:
 
 
 def main() -> None:
-    soft = False
+    soft = True
     board = Board.from_string("." * 9, Player.O)
     while True:
         # r, c = [int(m) for m in input("Move: ")]
+        # board = board.move((r, c))
         variation = search.alphabeta(
             node=board,
             a=board.minimum(),
@@ -143,13 +144,15 @@ def main() -> None:
         if board.is_terminal():
             print(board.score())
             break
-        variation = search.alphabeta(
-            node=board,
-            a=board.minimum(),
-            b=board.maximum(),
-            soft=soft,
-        )
-        board = board.move(variation.moves[board.depth])
+        r, c = [int(m) for m in input("Move: ")]
+        board = board.move((r, c))
+        # variation = search.alphabeta(
+        #     node=board,
+        #     a=board.minimum(),
+        #     b=board.maximum(),
+        #     soft=soft,
+        # )
+        # board = board.move(variation.moves[board.depth])
         print(board.string())
         if board.is_terminal():
             print(board.score())
