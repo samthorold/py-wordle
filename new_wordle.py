@@ -225,6 +225,8 @@ class WordleNode:
                     depth=self.depth + 1,
                 )
         else:
+            # this only needs to be each _evaluation_
+            # multiple words lead to the same evaluation.
             for guess in self.vocabulary:
                 sc = evaluate(guess=self.moves[-1], aim=guess)
                 logger.debug("%s %s", self.moves, sc)
