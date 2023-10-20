@@ -119,12 +119,28 @@ class Guesser(Protocol):
         ...
 
 
-class Scorer:
+class Scorer(Protocol):
+    def __call__(self, guess: str) -> str:
+        ...
+
+
+class AutoScorer:
     def __init__(self, truth: str) -> None:
         self.truth = truth
 
     def __call__(self, guess: str) -> str:
         return evaluate(self.truth, guess)
+
+
+class UserScorer:
+    def __call__(self, guess: str) -> str:
+        print(f"Guess: {guess}")
+        while True:
+            score = input("Score: ").strip().lower()
+            if len(score) != 5:
+                print("Score must be 5 letters long. Enter another.")
+                continue
+            return score
 
 
 class UserGuesser:
@@ -261,7 +277,9 @@ class AlphaBetaGuesser:
             b=node.maximum(),
             soft=True,
         )
-        logger.info("best node move=%s moves=%s", best_guess.moves[-2], best_guess.moves)
+        logger.info(
+            "best node move=%s moves=%s", best_guess.moves[-2], best_guess.moves
+        )
         return best_guess.moves[-2]
 
 
@@ -317,10 +335,11 @@ def main(
     truth: str,
     vocabulary: list[str],
     guesser: Guesser,
+    scorer: Scorer,
 ) -> int:
     wordle = Wordle(
         guesser=guesser,
-        scorer=Scorer(truth=truth),
+        scorer=scorer,
         vocabulary=vocabulary,
     )
     while True:
@@ -339,6 +358,7 @@ class WordleArgs:
         truth: str,
         vocabulary: list[str],
         guesser: Guesser,
+        scorer: Scorer,
         log_level: str,
     ) -> None:
         if truth not in vocabulary:
@@ -346,6 +366,7 @@ class WordleArgs:
         self.truth = truth
         self.vocabulary = vocabulary
         self.guesser = guesser
+        self.scorer = scorer
         self.log_level = log_level.upper()
 
     @classmethod
@@ -359,13 +380,15 @@ class WordleArgs:
         truth = random.choice(vocabulary) if args.truth is None else args.truth
         guesser = (
             UserGuesser(vocabulary=vocabulary)
-            if args.interactive
+            if args.interactive_guess
             else AlphaBetaGuesser(vocabulary)
         )
+        scorer = UserScorer() if args.interactive_score else AutoScorer(truth=truth)
         return WordleArgs(
             truth=truth,
             vocabulary=vocabulary,
             guesser=guesser,
+            scorer=scorer,
             log_level=args.log_level,
         )
 
@@ -374,11 +397,18 @@ cli = argparse.ArgumentParser()
 cli.add_argument("--truth")
 cli.add_argument("--vocabulary")
 cli.add_argument("--log-level", default="WARNING")
-cli.add_argument("--interactive", action="store_true")
+cli.add_argument("--interactive-guess", action="store_true")
+cli.add_argument("--interactive-score", action="store_true")
+
 
 if __name__ == "__main__":
     print("=== PyWordle ===")
     args = WordleArgs.from_argument_parser(cli)
     logging.basicConfig(level=args.log_level)
-    main(truth=args.truth, vocabulary=args.vocabulary, guesser=args.guesser)
+    main(
+        truth=args.truth,
+        vocabulary=args.vocabulary,
+        guesser=args.guesser,
+        scorer=args.scorer,
+    )
     print(args.truth)
